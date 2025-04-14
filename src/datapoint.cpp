@@ -1,4 +1,4 @@
-#include "include/datapoint.h"
+#include "datapoint.h"
 
 #include <vector>
 #include <cmath>

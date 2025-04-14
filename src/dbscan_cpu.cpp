@@ -3,10 +3,10 @@
 #include <math.h>
 #include <omp.h>
 #include <functional>
-#include "include/dbscan_cpu.h"
-#include "include/datapoint.h"
-#include "include/rtree.h"
-#include "utils/utils.h"
+#include "dbscan_cpu.h"
+#include "datapoint.h"
+#include "rtree.h"
+#include "utils.h"
 
 using namespace std;
 
