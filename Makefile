@@ -17,9 +17,9 @@ all:
 	make $(TARGETS)
 
 dbscan-cpu: $(INC_DIR)dbscan.h $(SRC_DIR)dbscan-cpu.cpp 
-	$(CXX) $(CFLAGS) -I$(INC_DIR) -o $@ $<
+	$(CXX) $(CFLAGS) $(OMP_FLAGS) -I$(INC_DIR) -o $@ $<
 
-dbscan-cuda:
+# dbscan-cuda:
 
 clean:
 	rm -f $(TARGETS)
