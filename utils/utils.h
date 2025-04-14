@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include "include/DataPoint.h"
+#include "datapoint.h"
 #include <cstddef> // for size_t
 
 size_t import_data(char* filename, std::vector<DataPoint>& points);

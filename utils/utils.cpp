@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "datapoint.h"
 #include <iostream>
 #include <fstream>
 #include <cstddef> // for size_t
