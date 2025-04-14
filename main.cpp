@@ -1,5 +1,7 @@
 #include "utils.h"
 #include "datapoint.h"
+#include "dbscan_cpu.h"
+#include "rtree.h"
 #include <iostream>
 #include <string>
 
@@ -18,15 +20,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "Successfully loaded " << data_size << " data points." << std::endl;
+    std::cout << "Number of data points imported: " << data_size << std::endl;
 
-    // Print a few points to verify
-    for (int i = 0; i < std::min(data_size, size_t(5)); ++i) {
-        std::cout << "Point " << i << ": ";
-        for (int j = 0; j < points[i].get_dim(); ++j)
-            std::cout << points[i][j] << " ";
-        std::cout << "\n";
-    }
-
-    return 0;
+    DBSCAN dbscan(points, 5, 0.5); // Example parameters: minPts = 5, eps = 0.5
+    dbscan.run(); // Run the DBSCAN algorithm
 }
