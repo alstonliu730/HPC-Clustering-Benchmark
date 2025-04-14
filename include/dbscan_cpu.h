@@ -30,6 +30,7 @@ class DBSCAN {
         DBSCAN(std::vector<DataPoint>& points, int minpts, double eps);
         ~DBSCAN();
         void run();
+        void results();
 };
 
 #endif // _DBSCAN_CPU_H_

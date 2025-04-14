@@ -155,3 +155,15 @@ void DBSCAN::run() {
         }
     }
 }
+
+void DBSCAN::results() {
+    printf("Number of clusters: %d\n", this->cluster_id);
+    int noises = 0;
+    for (size_t i = 0; i < this->data_size; i++) {
+      if (this->labels[i] == NOISE) {
+        noises++;
+      }
+    }
+  
+    printf("Noises: %d\n", noises);
+}
