@@ -10,14 +10,17 @@ OMP_FLAGS = -fopenmp
 # Source directory
 SRC_DIR = src/
 INC_DIR = include/
+UTILS_DIR = utils/
 TARGETS = main dbscan-cpu dbscan-cuda
 
 # main
 all: 
 	make $(TARGETS)
-
-dbscan-cpu: $(INC_DIR)dbscan.h $(SRC_DIR)dbscan-cpu.cpp 
-	$(CXX) $(CFLAGS) $(OMP_FLAGS) -I$(INC_DIR) -o $@ $<
+main: $(SRC_DIR)main.cpp
+    $(CXX) $(CFLAGS) $(OMP_FLAGS) -I$(INC_DIR) -o $@ $<
+	
+dbscan-cpu:$(SRC_DIR)dbscan-cpu.cpp
+	$(CXX) $(CFLAGS) $(OMP_FLAGS) -I $(INC_DIR)*.h -o $@ $<
 
 # dbscan-cuda:
 

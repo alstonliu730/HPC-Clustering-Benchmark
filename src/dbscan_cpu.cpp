@@ -2,9 +2,11 @@
 #include <vector>
 #include <math.h>
 #include <omp.h>
-#include <include/dbscan_cpu.h>
-#include <include/datapoint.h>
-#include <include/rtree.h>
+#include <functional>
+#include "include/dbscan_cpu.h"
+#include "include/datapoint.h"
+#include "include/rtree.h"
+#include "utils/utils.h"
 
 using namespace std;
 
