@@ -10,12 +10,18 @@ class DataPoint {
     public:
         // Constructor
         DataPoint(double *values, int dim);
+
+        // Copy constructor
+        DataPoint(const DataPoint& other);
         
         // Destructor
         ~DataPoint();
 
         // Accessor
         double operator[](int index) const;
+
+        // Copy assignment operator
+        DataPoint& operator=(const DataPoint& other);
 
         // Copy method
         void copy(double *arr, int n) const;
