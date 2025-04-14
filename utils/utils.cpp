@@ -24,7 +24,9 @@ size_t import_data(char* input_file, std::vector<DataPoint>& points) {
         if (!values.empty()) {
             double* data = new double[values.size()];
             std::copy(values.begin(), values.end(), data);
-            points.emplace_back(data, values.size());
+	    DataPoint pt(data, values.size());
+	    points.push_back(pt);
+	    values.clear();
         }
     }
 

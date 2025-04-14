@@ -92,7 +92,7 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     // Iterate through the neighbors and check if they are within eps distance
     #pragma omp parallel 
     {   
-        int chunk_size = (searchNeighbors.size() / omp_get_num_threads()) + 1;  1;
+        int chunk_size = (searchNeighbors.size() / omp_get_num_threads()) + 1;
         #pragma omp for schedule(static, chunk_size)
         for (int i = 0; i < searchNeighbors.size(); i++) {
             DataPoint neighbor = points[searchNeighbors[i]];

@@ -12,8 +12,8 @@ int main(int argc, char** argv) {
     }
 
     char* input_file = argv[1];
-    int minPts = std::stoi(argv[2]);
-    double eps = std::stod(argv[3]);
+    //int minPts = std::stoi(argv[2]);
+    //double eps = std::stod(argv[3]);
 
     std::vector<DataPoint> points;
     size_t data_size = import_data(input_file, points);
