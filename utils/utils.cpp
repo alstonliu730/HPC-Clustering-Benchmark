@@ -1,27 +1,33 @@
 #include "utils.h"
 #include "datapoint.h"
-#include <iostream>
 #include <fstream>
-#include <cstddef> // for size_t
+#include <sstream>
+#include <vector>
+#include <iostream>
 
-size_t import_data(char* filename, std::vector<DataPoint>& points) {
-    FILE* file = fopen(filename, "r");
-
-    if (file == NULL) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return 0; // Return 0 if file cannot be opened
+size_t import_data(char* input_file, std::vector<DataPoint>& points) {
+    std::ifstream file(input_file);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file " << input_file << std::endl;
+        return 0;
     }
 
-    // read file until EOF
-    double x, y, z;
-    size_t count = 0;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::vector<double> values;
+        double value;
+        while (iss >> value) {
+            values.push_back(value);
+        }
 
-    while (fscanf(file, "%lf, %lf, %lf", &x, &y, &z) == 3) {
-        double* values = new double[3]; // Allocate memory for 3D point
-        values[0] = x;
-        values[1] = y;
-        values[2] = z;
-        points.push_back(DataPoint(values, 3)); // Add point to vector
-        count++;
+        if (!values.empty()) {
+            double* data = new double[values.size()];
+            std::copy(values.begin(), values.end(), data);
+            points.emplace_back(data, values.size());
+        }
     }
+
+    file.close();
+    return points.size();
 }

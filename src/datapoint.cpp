@@ -6,7 +6,9 @@
 
 // Constructor
 DataPoint::DataPoint(double *values, int dim) {
-    this->data = values; this->dim = dim;
+    this->data = new double[dim]; 
+    this->dim = dim;
+    std::memcpy(this->data, values, dim * sizeof(double)); // copy the values into the data array
 }
 
 // Destructor

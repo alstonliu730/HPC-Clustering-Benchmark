@@ -1,5 +1,6 @@
-#include "include/dbscan_cpu.h"
-#include "utils/utils.h"
+#include "dbscan_cpu.h"
+#include "utils.h"
+#include "datapoint.h"
 #include <iostream>
 #include <string.h>
 #include <stdlib.h>
