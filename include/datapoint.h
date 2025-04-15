@@ -7,6 +7,7 @@ class DataPoint {
     private:
         double *data; // Pointer to the data array
         int dim; // Dimension of the data point
+        bool visited = false; // Flag to indicate if the point has been visited
     public:
         // Constructor
         DataPoint(double *values, int dim);

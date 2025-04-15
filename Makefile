@@ -12,6 +12,7 @@ OMP_FLAGS = -fopenmp
 SRC_DIR = src
 INC_DIR = include
 UTILS_DIR = utils
+FLANN_DIR = flann/src/cpp/flann
 
 # Targets
 TARGETS = main dbscan-cpu dbscan-cuda
@@ -21,10 +22,8 @@ TARGETS = main dbscan-cpu dbscan-cuda
 #	make $(TARGETS)
 
 main: main.cpp $(UTILS_DIR)/*.cpp $(SRC_DIR)/*.cpp
-	$(CXX) $(CFLAGS) $(DEBUG) $(OMP_FLAGS) -I $(INC_DIR)/ -I $(UTILS_DIR)/ -o $@.exe $^
-
-dbscan-cpu:$(SRC_DIR)/dbscan-cpu.cpp
-	$(CXX) $(CFLAGS) $(OMP_FLAGS) -I $(INC_DIR)/ -o $@ $<
+	$(CXX) $(CFLAGS) $(DEBUG) $(OMP_FLAGS) -I $(INC_DIR)/\
+	-I $(UTILS_DIR)/ -I $(FLANN_DIR)/ -o $@.exe $^
 
 # dbscan-cuda:
 

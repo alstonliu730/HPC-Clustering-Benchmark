@@ -3,10 +3,11 @@
 
 #include <vector>
 #include "datapoint.h"
-#include "rtree.h"
+#include "flann/flann.hpp"
 
 #define NOISE -1
 
+using namespace flann;
 class DBSCAN {
     protected:
         int minPts; // Minimum number of points in a neighborhood to form a dense region
@@ -14,11 +15,15 @@ class DBSCAN {
 
         int cluster_id; // Current cluster ID
         int *labels; // Array to store cluster labels for each point
-
+        int dim; // Dimension of the data points
+        
         std::vector<DataPoint>* data; // pointer to the data points
         size_t data_size; // Size of the data array
 
-        RTree<double, double, 3, double> tree; // RTree for spatial indexing
+        Matrix<double> dataset; // Matrix to store the dataset for FLANN
+        Matrix<double> query; // Matrix to store the query points for FLANN
+        Index<L2<double>>* index; // FLANN index for nearest neighbor search
+
     private:
         // Function to calculate the distance between two points
         double getDist(DataPoint& p1, DataPoint& p2); 

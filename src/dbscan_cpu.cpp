@@ -7,6 +7,7 @@
 #include "datapoint.h"
 #include "rtree.h"
 #include "utils.h"
+#include "flann/flann.hpp"
 
 using namespace std;
 
@@ -32,15 +33,29 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     this->eps = eps;
     this->cluster_id = 0;
     this->data_size = points.size();
-    this->data = new std::vector<DataPoint>(points);
-    this->labels = new int[this->data_size]; // Allocate memory for labels
+    this->data = new vector<DataPoint>(points);
+    this->labels = new int[this->data_size](); // Allocate memory for labels
     
-    // Build the RTree for spatial indexing
-    for (size_t i = 0; i < this->data_size; ++i) {
-        Rect rect(points[i][0] - eps, points[i][1] - eps,
-                  points[i][0] + eps, points[i][1] + eps);
-        tree.Insert(rect.min, rect.max, i);
+    // Dynamically determine the dimension from the first DataPoint
+    if (!points.empty()) {
+        this->dim = points[0].get_dim();
+    } else {
+        this->dim = 0;
     }
+
+    // Allocate the dataset matrix for FLANN
+    this->dataset = flann::Matrix<double>(new double[this->data_size * this->dim], this->data_size, this->dim);
+
+    // Populate the dataset matrix with the data from the points
+    for (size_t i = 0; i < this->data_size; i++) {
+        for (int j = 0; j < this->dim; j++) {
+            this->dataset[i][j] = (*this->data)[i][j];
+        }
+    }
+
+    // Build the FLANN k-d tree index
+    this->index = new flann::Index<flann::L2<double>>(this->dataset, flann::KDTreeIndexParams(4));
+    this->index->buildIndex();
 }
 
 DBSCAN::~DBSCAN() {
@@ -53,7 +68,7 @@ DBSCAN::~DBSCAN() {
  */
 double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
     if (a.get_dim() != b.get_dim()) {
-        std::cerr << "Error: Dimensions of the points do not match." << std::endl;
+        cerr << "Error: Dimensions of the points do not match." << std::endl;
         return -1.0; // Return an error value
     }
 
@@ -61,7 +76,7 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
     int i;
     for(i = 0; i < a.get_dim(); i++) {
         double diff = a[i] - b[i];
-        dist += diff * diff; // Squared distance
+        dist += (diff * diff); // Squared distance
     }
 
     return sqrt(dist); // Return the Euclidean distance
@@ -72,38 +87,25 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
  * @return A vector of indices of the points within eps distance from the given point
  */
 vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
-    // Create a vector to hold the neighbors
-    vector<int> neighbors, searchNeighbors;
+    vector<int> neighbors;
 
-    // Create a search rectangle around the point
-    DataPoint p = points[point];    
-    Rect searchRect = Rect(p[0] - eps, p[1] - eps,
-                           p[0] + eps, p[1] + eps);
-
-    // Create a callback function to add the found points to the neighbors                      
-    std::function<bool (const int)> searchBoxCallback = [&](const int id) {
-        searchNeighbors.push_back(id);
-        return true;
-    };
-
-    // Search the RTree for points within the search rectangle
-    this->tree.Search(searchRect.min, searchRect.max, searchBoxCallback);
-    
-    // Iterate through the neighbors and check if they are within eps distance
-    #pragma omp parallel 
-    {   
-        int chunk_size = (searchNeighbors.size() / omp_get_num_threads()) + 1;
-        #pragma omp for schedule(static, chunk_size)
-        for (int i = 0; i < searchNeighbors.size(); i++) {
-            DataPoint neighbor = points[searchNeighbors[i]];
-            if (getDist(p, neighbor) <= eps) {
-                #pragma omp critical
-                neighbors.push_back(searchNeighbors[i]);
-            }
-        }
+    // Prepare the query point
+    flann::Matrix<double> query(new double[this->dim], 1, this->dim);
+    for (int i = 0; i < this->dim; i++) {
+        query[0][i] = (*this->data)[point][i];
     }
 
-    // return the neighbors
+    // Perform a radius search
+    std::vector<std::vector<int>> indices;
+    std::vector<std::vector<double>> dists;
+    this->index->radiusSearch(query, indices, dists, eps * eps, flann::SearchParams(128));
+
+    // Add the neighbors to the result
+    if (!indices.empty()) {
+        neighbors = indices[0]; // Get the neighbors for the first query point
+    }
+
+    delete[] query.ptr(); // Free the query matrix memory
     return neighbors;
 }
 
@@ -116,6 +118,8 @@ void DBSCAN::run() {
         // Search for neighbors within eps distance
         vector<int> neighbors = regionQuery(i, *this->data);
         if (neighbors.size() < this->minPts) {
+            printf("Point %d is noise\n", i);
+            // Mark as noise
             this->labels[i] = NOISE; // Mark as noise
             continue;
         }
@@ -134,20 +138,22 @@ void DBSCAN::run() {
                 continue; // Skip the point itself
             }
 
+            // Change noise to cluster id
             if (this->labels[neighbor] == NOISE) {
-                this->labels[neighbor] = this->cluster_id; // Change noise to cluster id
+                this->labels[neighbor] = this->cluster_id; 
                 continue;
             }
 
-            if (this->labels[neighbor] != 0) {
+            if (this->labels[neighbor] != 0 || ) {
                 continue; // Already processed
             }
 
             this->labels[neighbor] = this->cluster_id; // Assign cluster id
-
+            
             // Search for neighbors of the neighbor
             vector<int> newNeighbors = regionQuery(neighbor, *this->data);
             if (newNeighbors.size() >= this->minPts) {
+
                 // Merge the new neighbors into the existing neighbors
                 neighbors.insert(neighbors.end(), newNeighbors.begin(), newNeighbors.end());
             }

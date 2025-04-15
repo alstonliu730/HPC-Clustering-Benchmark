@@ -2,6 +2,7 @@
 #include "datapoint.h"
 #include "dbscan_cpu.h"
 #include "rtree.h"
+#include "flann.hpp"
 #include <iostream>
 #include <string>
 
@@ -24,4 +25,5 @@ int main(int argc, char** argv) {
 
     DBSCAN dbscan(points, 5, 0.5); // Example parameters: minPts = 5, eps = 0.5
     dbscan.run(); // Run the DBSCAN algorithm
+    dbscan.results(); // Output the results
 }
