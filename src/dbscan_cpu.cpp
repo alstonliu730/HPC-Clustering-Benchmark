@@ -104,16 +104,19 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     // Perform a radius search
     printf("Searching for neighbors...\n");
     flann::Matrix<int> indices;
-    flann::Matrix<float> dists;
-    int num_found = this->index->radiusSearch(query, indices, dists, this->eps * this->eps, flann::SearchParams(128));
+    flann::Matrix<double> dists;
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(128));
 
     printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
     
     // Add the neighbors to the result
     if (num_found != 0) {
+        int* res = indices.ptr();
         std::cout << "Neighbors within radius " << eps << ":\n";
-        for (int idx : indices[0]) {
-            std::cout << " - Point index: " << idx << '\n';
+        for (int i = 0; i < indices.rows; i++) {
+            for(int j = 0; i < indices.cols; j++) {
+                std::cout << " - Point index: " << res[i*this->dim + j] << '\n';
+            }
         }
     }
 
@@ -144,10 +147,7 @@ void DBSCAN::run() {
         this->labels[i] = this->cluster_id;
 
         // Expand the cluster
-        while (!neighbors.empty()) {
-            // get the neighbor index
-            int neighbor = neighbors.front();
-
+        for(int neighbor : neighbors) {
             if (neighbor == i) {
                 continue; // Skip the point itself
             }
