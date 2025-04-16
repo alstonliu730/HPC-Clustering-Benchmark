@@ -26,4 +26,6 @@ int main(int argc, char** argv) {
     DBSCAN dbscan(points, 5, 0.5); // Example parameters: minPts = 5, eps = 0.5
     dbscan.run(); // Run the DBSCAN algorithm
     dbscan.results(); // Output the results
+    dbscan.~DBSCAN(); // Clean up
+    return 0;
 }

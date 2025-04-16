@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "datapoint.h"
-#include "flann/flann.h"
+#include "flann/flann.hpp"
 
 #define NOISE -1
 

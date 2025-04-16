@@ -47,6 +47,8 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     this->dataset = flann::Matrix<double>(new double[this->data_size * this->dim], this->data_size, this->dim);
 
     // Populate the dataset matrix with the data from the points
+    printf("Populating dataset matrix...\n");
+    #pragma omp parallel for schedule(static, 1) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
             this->dataset[i][j] = (*this->data)[i][j];
@@ -54,13 +56,16 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     }
 
     // Build the FLANN k-d tree index
+    printf("Building FLANN index...\n");
     this->index = new flann::Index<flann::L2<double>>(this->dataset, flann::KDTreeIndexParams(4));
     this->index->buildIndex();
 }
 
 DBSCAN::~DBSCAN() {
-    delete this->data; // Free the allocated memory for data points
-    delete[] labels; // Free the allocated memory for labels
+    delete[] this->labels; // Free the labels array
+    delete this->data; // Free the data vector
+    delete this->index; // Free the FLANN index
+    delete[] this->dataset.ptr(); // Free the dataset matrix memory
 }
 
 /**
@@ -88,7 +93,7 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
  */
 vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     vector<int> neighbors;
-
+    int nn = 3; // Number of nearest neighbors to search for
     // Prepare the query point
     flann::Matrix<double> query(new double[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
@@ -96,16 +101,23 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     }
 
     // Perform a radius search
-    std::vector<std::vector<int>> indices;
-    std::vector<std::vector<double>> dists;
-    this->index->radiusSearch(query, indices, dists, eps * eps, flann::SearchParams(128));
+    printf("Searching for neighbors...\n");
+    Matrix<int> indices;
+    Matrix<double> dists;
+    int num_found = this->index->radiusSearch(query, indices, dists, eps, flann::SearchParams(128));
 
+    printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
+    
     // Add the neighbors to the result
     if (!indices.empty()) {
-        neighbors = indices[0]; // Get the neighbors for the first query point
+        for(int i = 0; i < query.rows*nn; i++) {
+            neighbors.push_back(indices[0][i]);
+        }
     }
 
     delete[] query.ptr(); // Free the query matrix memory
+    delete[] indices.ptr(); // Free the indices matrix memory
+    delete[] dists.ptr(); // Free the distances matrix memory
     return neighbors;
 }
 
