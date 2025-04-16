@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Number of data points imported: " << data_size << std::endl;
 
-    DBSCAN dbscan(points, 5, 0.5); // Example parameters: minPts = 5, eps = 0.5
+    DBSCAN dbscan(points, 5, 1.0); // Example parameters: minPts = 5, eps = 0.5
     dbscan.run(); // Run the DBSCAN algorithm
     dbscan.results(); // Output the results
     dbscan.~DBSCAN(); // Clean up
