@@ -12,7 +12,9 @@ OMP_FLAGS = -fopenmp
 SRC_DIR = src
 INC_DIR = include
 UTILS_DIR = utils
-FLANN_DIR = flann/src/cpp/flann
+FLANN_DIR = flann/src/cpp
+LZ4_DIR = external/lz4/lib
+LZ4_LIB = $(LZ4_DIR)/liblz4.a
 
 # Targets
 TARGETS = main dbscan-cpu dbscan-cuda
@@ -22,8 +24,10 @@ TARGETS = main dbscan-cpu dbscan-cuda
 #	make $(TARGETS)
 
 main: main.cpp $(UTILS_DIR)/*.cpp $(SRC_DIR)/*.cpp
-	$(CXX) $(CFLAGS) $(DEBUG) $(OMP_FLAGS) -I $(INC_DIR)/\
-	-I $(UTILS_DIR)/ -I $(FLANN_DIR)/ -o $@.exe $^
+	$(CXX) $(CFLAGS) $(DEBUG) $(OMP_FLAGS) \
+	-I $(INC_DIR)/ -I $(UTILS_DIR)/ -I $(FLANN_DIR)/ -I $(LZ4_DIR) \
+	-o $@.exe $^ $(LZ4_LIB)
+
 
 # dbscan-cuda:
 

@@ -2,7 +2,7 @@
 #include "datapoint.h"
 #include "dbscan_cpu.h"
 #include "rtree.h"
-#include "flann.hpp"
+#include "flann/flann.hpp"
 #include <iostream>
 #include <string>
 

@@ -144,7 +144,7 @@ void DBSCAN::run() {
                 continue;
             }
 
-            if (this->labels[neighbor] != 0 || ) {
+            if (this->labels[neighbor] != 0) {
                 continue; // Already processed
             }
 
