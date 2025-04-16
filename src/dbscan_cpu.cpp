@@ -51,7 +51,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     #pragma omp parallel for schedule(static, (data_size/omp_get_num_threads())) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = (*this->data)[i][j];
+            this->dataset[i][j] = this->data[i][j];
         }
     }
 
@@ -64,7 +64,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
 DBSCAN::~DBSCAN() {
     delete[] this->labels; // Free the labels array
     delete this->data; // Free the data vector
-    delete this->index; // Free the FLANN index
+    this->index->~Index(); // Free the FLANN index
     delete[] this->dataset.ptr(); // Free the dataset matrix memory
 }
 
@@ -94,29 +94,35 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
 vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     printf("Finding neighbors for point %d\n", point);
     vector<int> neighbors;
-
+    int knn = 10; // Number of nearest neighbors to search for
     // Prepare the query point
     flann::Matrix<double> query(new double[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
         query[0][i] = points[point][i];
     }
 
-    // Perform a radius search
+    // Perform a knn search
     printf("Searching for neighbors...\n");
-    flann::Matrix<int> indices;
-    flann::Matrix<double> dists;
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(128));
+    flann::Matrix<int> indices(new int[knn * this->dim], knn, this->dim); // Allocate memory for indices
+    flann::Matrix<double> dists(new double[knn * this->dim], knn, this->dim); // Allocate memory for distances
+
+    // Perform the knn search using FLANN
+    int num_found = this->index->knnSearch(query, indices, dists, knn, flann::SearchParams(32, (this->eps * this->eps), true));
+    if (num_found == -1) {
+        printf("Error: No neighbors found.\n");
+        return neighbors; // Return empty vector if no neighbors found
+    }
 
     printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
     
     // Add the neighbors to the result
-    if (num_found != 0) {
-        int* res = indices.ptr();
-        std::cout << "Neighbors within radius " << eps << ":\n";
-        for (int i = 0; i < indices.rows; i++) {
-            for(int j = 0; i < indices.cols; j++) {
-                std::cout << " - Point index: " << res[i*this->dim + j] << '\n';
-            }
+    int* indices_res = indices.ptr();
+    double* dists_res = dists.ptr();
+    std::cout << "Neighbors within radius " << eps << ":\n";
+    for (int i = 0; i < knn; i++) {
+        for(int j = 0; j < this->dim; j++) {
+            std::cout << " - Point index: " << indices_res[i*this->dim + j] << '\n';
+            neighbors.push_back(indices_res[i*this->dim + j]); // Add the neighbor index to the result
         }
     }
 
