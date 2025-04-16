@@ -48,7 +48,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
 
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
-    #pragma omp parallel for schedule(static, 1) // Parallelize the loop for performance
+    #pragma omp parallel for schedule(static, (data_size/omp_get_num_threads())) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
             this->dataset[i][j] = (*this->data)[i][j];
@@ -92,26 +92,31 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
  * @return A vector of indices of the points within eps distance from the given point
  */
 vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
+    printf("Finding neighbors for point %d\n", point);
     vector<int> neighbors;
-    int nn = 3; // Number of nearest neighbors to search for
+
     // Prepare the query point
     flann::Matrix<double> query(new double[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
-        query[0][i] = (*this->data)[point][i];
+        query[0][i] = points[point][i];
     }
 
     // Perform a radius search
     printf("Searching for neighbors...\n");
-    Matrix<int> indices;
-    Matrix<double> dists;
-    int num_found = this->index->radiusSearch(query, indices, dists, eps, flann::SearchParams(128));
+    Matrix<int> indices(new int[nn*this->dim], , );
+    Matrix<float> dists(new float[nn*this->dim], query.rows, nn);
+    int num_found = this->index->radiusSearch(query, indices, dists, 1.0, flann::SearchParams(128));
 
     printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
     
     // Add the neighbors to the result
-    if (!indices.empty()) {
-        for(int i = 0; i < query.rows*nn; i++) {
-            neighbors.push_back(indices[0][i]);
+    if (num_found != 0) {
+	size_t i, j;
+	#pragma omp parallel for schedule(dynamic) private(i, j)
+        for(i = 0; i < indices.rows; i++) {
+            for(j = 0; i < indices.cols; i++) {
+	    	neighbors.push_back(indices[j][i]);
+	    }
         }
     }
 
@@ -122,7 +127,7 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
 }
 
 void DBSCAN::run() {
-    // Iterate through points
+    // Iterate through points 
     for (int i = 0; i < this->data_size; i++) {
         if (this->labels[i] != 0) {
             continue; // Already processed
