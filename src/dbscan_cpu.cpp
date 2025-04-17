@@ -51,7 +51,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     #pragma omp parallel for schedule(static, (data_size/omp_get_num_threads())) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = this->data[i][j];
+            this->dataset[i][j] = (*this->data)[i][j];
         }
     }
 
