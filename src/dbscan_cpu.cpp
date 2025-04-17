@@ -94,20 +94,20 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
 vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     printf("Finding neighbors for point %d\n", point);
     vector<int> neighbors;
-    int knn = 10; // Number of nearest neighbors to search for
+
     // Prepare the query point
     flann::Matrix<double> query(new double[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
         query[0][i] = points[point][i];
     }
 
-    // Perform a knn search
+    // Perform a radius search
     printf("Searching for neighbors...\n");
-    flann::Matrix<int> indices(new int[knn * this->dim], knn, this->dim); // Allocate memory for indices
-    flann::Matrix<double> dists(new double[knn * this->dim], knn, this->dim); // Allocate memory for distances
+    flann::Matrix<int> indices; // Allocate memory for indices
+    flann::Matrix<double> dists; // Allocate memory for distances
 
-    // Perform the knn search using FLANN
-    int num_found = this->index->knnSearch(query, indices, dists, knn, flann::SearchParams(32, (this->eps * this->eps), true));
+    // Perform the radius search using FLANN
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
         return neighbors; // Return empty vector if no neighbors found
@@ -118,9 +118,9 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     // Add the neighbors to the result
     int* indices_res = indices.ptr();
     double* dists_res = dists.ptr();
-    std::cout << "Neighbors within radius " << eps << ":\n";
-    for (int i = 0; i < knn; i++) {
-        for(int j = 0; j < this->dim; j++) {
+    std::cout << "Neighbors within radius " << this->eps << ":\n";
+    for (int i = 0; i < indices.rows; i++) {
+        for(int j = 0; j < indices.cols; j++) {
             std::cout << " - Point index: " << indices_res[i*this->dim + j] << '\n';
             neighbors.push_back(indices_res[i*this->dim + j]); // Add the neighbor index to the result
         }
@@ -138,12 +138,13 @@ void DBSCAN::run() {
         if (this->labels[i] != 0) {
             continue; // Already processed
         }
+
         // Search for neighbors within eps distance
         vector<int> neighbors = regionQuery(i, *this->data);
         if (neighbors.size() < this->minPts) {
             printf("Point %d is noise\n", i);
             // Mark as noise
-            this->labels[i] = NOISE; // Mark as noise
+            this->labels[i] = NOISE; 
             continue;
         }
 
@@ -173,11 +174,9 @@ void DBSCAN::run() {
             // Search for neighbors of the neighbor
             vector<int> newNeighbors = regionQuery(neighbor, *this->data);
             if (newNeighbors.size() >= this->minPts) {
-
                 // Merge the new neighbors into the existing neighbors
                 neighbors.insert(neighbors.end(), newNeighbors.begin(), newNeighbors.end());
             }
-
         }
     }
 }
