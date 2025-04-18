@@ -49,14 +49,15 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
     int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
-    #pragma omp parallel for schedule(static, chunk_size) // Parallelize the loop for performance
-    for (size_t i = 0; i < this->data_size; i++) {
-        for (int j = 0; j < this->dim; j++) {
-            #pragma omp atomic
-            this->dataset[i][j] = (*this->data)[i][j];
+    #pragma omp parallel for schedule(static, chunk_size)
+    {
+        // Parallelize the loop for performance
+        for (size_t i = 0; i < this->data_size; i++) {
+            for (int j = 0; j < this->dim; j++) {
+                this->dataset[i][j] = (*this->data)[i][j];
+            }
         }
     }
-
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
     this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<double>>(this->dataset, flann::KDTreeSingleIndexParams(10));
