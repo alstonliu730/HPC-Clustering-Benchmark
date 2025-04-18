@@ -20,9 +20,9 @@ class DBSCAN {
         std::vector<DataPoint>* data; // pointer to the data points
         size_t data_size; // Size of the data array
 
-        Matrix<double> dataset; // Matrix to store the dataset for FLANN
-        Matrix<double> query; // Matrix to store the query points for FLANN
-        KDTreeSingleIndex<L2_Simple<double>>* index; // FLANN index for nearest neighbor search
+        Matrix<float> dataset; // Matrix to store the dataset for FLANN
+        Matrix<float> query; // Matrix to store the query points for FLANN
+        KDTreeSingleIndex<L2_Simple<float>>* index; // FLANN index for nearest neighbor search
 
     private:
         // Function to calculate the distance between two points

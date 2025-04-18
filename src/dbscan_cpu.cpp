@@ -44,7 +44,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     }
 
     // Allocate the dataset matrix for FLANN
-    this->dataset = flann::Matrix<double>(new double[this->data_size * this->dim], this->data_size, this->dim);
+    this->dataset = flann::Matrix<float>(new float[this->data_size * this->dim], this->data_size, this->dim);
 
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
@@ -60,7 +60,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     }
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
-    this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<double>>(this->dataset, flann::KDTreeSingleIndexParams(10));
+    this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<float>>(this->dataset, flann::KDTreeSingleIndexParams(10));
     this->index->buildIndex();
 }
 
@@ -104,9 +104,9 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
 vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     printf("Finding neighbors for point %ld\n", point);
     vector<size_t> neighbors;
-
+    int max_nn = 10;
     // Prepare the query point
-    flann::Matrix<double> query(new double[this->dim], 1, this->dim);
+    flann::Matrix<float> query(new float[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
         query[0][i] = points[point][i];
     }
@@ -114,7 +114,7 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     // Perform a radius search
     printf("Searching for neighbors...\n");
     flann::Matrix<size_t> indices; // Allocate memory for indices
-    flann::Matrix<double> dists; // Allocate memory for distances
+    flann::Matrix<float> dists; // Allocate memory for distances
 
     // Perform the radius search using FLANN
     int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
@@ -140,6 +140,8 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     }
 
     delete[] query.ptr(); // Free the query matrix memory
+    delete[] indices.ptr(); // Free the indices matrix memory
+    delete[] dists.ptr(); // Free the distances matrix memory
     return neighbors;
 }
 
