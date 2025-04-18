@@ -11,22 +11,6 @@
 
 using namespace std;
 
-struct Rect {
-    Rect() {}
-
-    double min[2];
-    double max[2];
-
-    Rect(double a_minX, double a_minY,  
-         double a_maxX, double a_maxY) {
-      min[0] = a_minX;
-      min[1] = a_minY;
-  
-      max[0] = a_maxX;
-      max[1] = a_maxY;
-    }
-};
-
 DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     // Initialize parameters
     this->minPts = minPts;
