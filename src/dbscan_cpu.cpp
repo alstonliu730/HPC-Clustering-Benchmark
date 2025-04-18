@@ -48,13 +48,12 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
 
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
-    #pragma omp parallel for schedule(static, (data_size/omp_get_num_threads())) // Parallelize the loop for performance
+    int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
+    #pragma omp parallel for schedule(static, chunk_size) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
             #pragma omp atomic
-            {
-                this->dataset[i][j] = (*this->data)[i][j];
-            }
+            this->dataset[i][j] = (*this->data)[i][j];
         }
     }
 
