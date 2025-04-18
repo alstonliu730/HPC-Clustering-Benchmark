@@ -13,8 +13,8 @@ class DBSCAN {
         int minPts; // Minimum number of points in a neighborhood to form a dense region
         double eps; // Maximum distance between two points to be considered neighbors
 
-        int cluster_id; // Current cluster ID
-        std::vector<int>* labels; // Array to store cluster labels for each point
+        size_t cluster_id; // Current cluster ID
+        std::vector<size_t>* labels; // Array to store cluster labels for each point
         int dim; // Dimension of the data points
         
         std::vector<DataPoint>* data; // pointer to the data points
@@ -29,7 +29,7 @@ class DBSCAN {
         double getDist(DataPoint& p1, DataPoint& p2); 
 
         // Function to find all points within eps distance from the given point
-        std::vector<int> regionQuery(int point, std::vector<DataPoint>& points); 
+        std::vector<size_t> regionQuery(size_t point, std::vector<DataPoint>& points); 
 
     public:
         DBSCAN(std::vector<DataPoint>& points, int minpts, double eps);
