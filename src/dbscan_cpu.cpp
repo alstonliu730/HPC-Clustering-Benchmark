@@ -34,7 +34,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     this->cluster_id = 0;
     this->data_size = points.size();
     this->data = new vector<DataPoint>(points);
-    this->labels = new int[this->data_size](); // Allocate memory for labels
+    this->labels = new vector<int>(this->data_size); // Allocate memory for labels
     
     // Dynamically determine the dimension from the first DataPoint
     if (!points.empty()) {
@@ -51,20 +51,24 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
     #pragma omp parallel for schedule(static, (data_size/omp_get_num_threads())) // Parallelize the loop for performance
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = (*this->data)[i][j];
+            #pragma omp atomic
+            {
+                this->dataset[i][j] = (*this->data)[i][j];
+            }
         }
     }
 
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
-    this->index = new flann::Index<flann::L2<double>>(this->dataset, flann::KDTreeIndexParams(4));
+    this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<double>>(this->dataset, flann::KDTreeSingleIndexParams(10));
     this->index->buildIndex();
 }
 
 DBSCAN::~DBSCAN() {
-    delete[] this->labels; // Free the labels array
+    delete this->labels; // Free the labels array
     delete this->data; // Free the data vector
-    this->index->~Index(); // Free the FLANN index
+    this->index->~KDTreeSingleIndex(); // Free the FLANN index
+    delete this->index; // Free the index pointer
     delete[] this->dataset.ptr(); // Free the dataset matrix memory
 }
 
@@ -107,7 +111,7 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     flann::Matrix<double> dists; // Allocate memory for distances
 
     // Perform the radius search using FLANN
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
+    int num_found = this->index->radius Search(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
         return neighbors; // Return empty vector if no neighbors found
@@ -119,12 +123,14 @@ vector<int> DBSCAN::regionQuery(int point, vector<DataPoint>& points) {
     int* indices_res = indices.ptr();
     double* dists_res = dists.ptr();
     std::cout << "Neighbors within radius " << this->eps << ":\n";
-    for (int i = 0; i < indices.rows; i++) {
-        for(int j = 0; j < indices.cols; j++) {
-            std::cout << " - Point index: " << indices_res[i*this->dim + j] << '\n';
-            neighbors.push_back(indices_res[i*this->dim + j]); // Add the neighbor index to the result
-        }
-    }
+    std::cout << "Indices Dimensions: " << indices.rows << " x " << indices.cols << '\n';
+    std::cout << "Distances Dimensions: " << dists.rows << " x " << dists.cols << '\n';
+    // for (int i = 0; i < indices.rows; i++) {
+    //     for(int j = 0; j < indices.cols; j++) {
+    //         std::cout << " - Point index: " << indices_res[i*indices.cols + j] << '\n';
+    //         neighbors.push_back(indices_res[i*indices.cols + j]); // Add the neighbor index to the result
+    //     }
+    // }
 
     delete[] query.ptr(); // Free the query matrix memory
     delete[] indices.ptr(); // Free the indices matrix memory
@@ -142,25 +148,25 @@ void DBSCAN::run() {
         // Search for neighbors within eps distance
         vector<int> neighbors = regionQuery(i, *this->data);
         if (neighbors.size() < this->minPts) {
-            printf("Point %d is noise\n", i);
-            // Mark as noise
-            this->labels[i] = NOISE; 
             continue;
         }
-
+        printf("Point %d is a core point\n", i);
         this->cluster_id++; // New cluster found
 
         // increment the cluster id for the current point
         this->labels[i] = this->cluster_id;
 
         // Expand the cluster
-        for(int neighbor : neighbors) {
+        printf("Expanding cluster %d\n", this->cluster_id);
+        while (!neighbors.empty()) {
+
             if (neighbor == i) {
                 continue; // Skip the point itself
             }
 
             // Change noise to cluster id
             if (this->labels[neighbor] == NOISE) {
+                printf("Point %d is no longer noise\n", neighbor);
                 this->labels[neighbor] = this->cluster_id; 
                 continue;
             }

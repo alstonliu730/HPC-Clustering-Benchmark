@@ -14,7 +14,7 @@ class DBSCAN {
         double eps; // Maximum distance between two points to be considered neighbors
 
         int cluster_id; // Current cluster ID
-        int *labels; // Array to store cluster labels for each point
+        std::vector<int>* labels; // Array to store cluster labels for each point
         int dim; // Dimension of the data points
         
         std::vector<DataPoint>* data; // pointer to the data points
@@ -22,7 +22,7 @@ class DBSCAN {
 
         Matrix<double> dataset; // Matrix to store the dataset for FLANN
         Matrix<double> query; // Matrix to store the query points for FLANN
-        Index<L2<double>>* index; // FLANN index for nearest neighbor search
+        KDTreeSingleIndex<L2_Simple<double>>* index; // FLANN index for nearest neighbor search
 
     private:
         // Function to calculate the distance between two points
