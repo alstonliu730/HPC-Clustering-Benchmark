@@ -125,17 +125,17 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     
     // Add the neighbors to the result
     cout << "Neighbors within radius " << this->eps << ":\n";
-    cout << "Indices: " << indices << endl;
-    cout << "Distances: " << dists << endl;
+    cout << "Indices Dimensions: " << indices.rows << " x " << indices.cols << endl;
+    cout << "Distances Dimensions: " << dists.rows << " x " << dists.cols << endl;
     
-    for (size_t i = 0; i < indices.rows; i++) {
-        for (size_t j = 0; j < indices.cols; j++) {
-            if (indices[i][j] != point) { // Exclude the point itself
-                neighbors.push_back(indices[i][j]);
-                cout << "Neighbor: " << indices[i][j] << ", Distance: " << dists[i][j] << '\n';
-            }
-        }
-    }
+    // for (size_t i = 0; i < indices.rows; i++) {
+    //     for (size_t j = 0; j < indices.cols; j++) {
+    //         if (indices[i][j] != point) { // Exclude the point itself
+    //             neighbors.push_back(indices[i][j]);
+    //             cout << "Neighbor: " << indices[i][j] << ", Distance: " << dists[i][j] << '\n';
+    //         }
+    //     }
+    // }
 
     delete[] query.ptr(); // Free the query matrix memory
     delete[] indices.ptr(); // Free the indices matrix memory
