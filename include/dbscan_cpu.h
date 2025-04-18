@@ -21,7 +21,6 @@ class DBSCAN {
         size_t data_size; // Size of the data array
 
         Matrix<float> dataset; // Matrix to store the dataset for FLANN
-        Matrix<float> query; // Matrix to store the query points for FLANN
         KDTreeSingleIndex<L2_Simple<float>>* index; // FLANN index for nearest neighbor search
 
     private:
