@@ -95,8 +95,8 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
 
     // Perform a radius search
     printf("Searching for neighbors...\n");
-    flann::Matrix<size_t> indices(new size_t[max_nn * this->dim], max_nn, this->dim); // Allocate memory for indices
-    flann::Matrix<float> dists(new float[max_nn * this->dim], max_nn, this->dim); // Allocate memory for distances
+    flann::Matrix<size_t> indices(new size_t[max_nn ], 1, max_nn; // Allocate memory for indices
+    flann::Matrix<float> dists(new float[max_nn], 1, max_nn); // Allocate memory for distances
 
     // Perform the radius search using FLANN
     int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
@@ -115,7 +115,7 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     for (size_t i = 0; i < num_found; i++) {
         if (indices[i][0] != point && i < max_nn) { // Skip the point itself
             neighbors.push_back(indices[i][0]); // Add the neighbor index to the vector
-            printf("Neighbor %ld: %ld\n", i, indices[i][0]);
+            printf("Neighbor %ld: %ld\n", i, indices[i]);
         }
     }
 
