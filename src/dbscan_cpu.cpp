@@ -55,7 +55,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
             this->dataset[i][j] = (*this->data)[i][j];
         }
     }
-    
+
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
     this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<float>>(this->dataset, flann::KDTreeSingleIndexParams(10));
@@ -125,8 +125,8 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     
     // Add the neighbors to the result
     cout << "Neighbors within radius " << this->eps << ":\n";
-    cout << "Indices Dimensions: " << indices.rows << " x " << indices.cols << '\n';
-    cout << "Distances Dimensions: " << dists.rows << " x " << dists.cols << '\n';
+    cout << "Indices: " << indices << endl;
+    cout << "Distances: " << dists << endl;
     
     for (size_t i = 0; i < indices.rows; i++) {
         for (size_t j = 0; j < indices.cols; j++) {
