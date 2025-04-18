@@ -114,8 +114,8 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     
     for (size_t i = 0; i < num_found; i++) {
         if (indices[i][0] != point && i < max_nn) { // Skip the point itself
-            neighbors.push_back(indices[i]); // Add the neighbor index to the vector
-            printf("Neighbor %ld: %ld\n", i, indices[i]);
+            neighbors.push_back(indices[i][0]); // Add the neighbor index to the vector
+            printf("Neighbor %ld: %ld\n", i, indices[i][0]);
         }
     }
 
