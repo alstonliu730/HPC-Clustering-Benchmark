@@ -5,17 +5,17 @@
 #include <cstring> // for memcpy
 
 // Constructor
-DataPoint::DataPoint(double *values, int dim) {
-    this->data = new double[dim]; 
+DataPoint::DataPoint(float *values, int dim) {
+    this->data = new float[dim]; 
     this->dim = dim;
-    std::memcpy(this->data, values, dim * sizeof(double)); // copy the values into the data array
+    std::memcpy(this->data, values, dim * sizeof(float)); // copy the values into the data array
 }
 
 // Copy constructor
 DataPoint::DataPoint(const DataPoint& other) {
     this->dim = other.dim;
-    this->data = new double[dim];
-    std::memcpy(this->data, other.data, dim * sizeof(double));
+    this->data = new float[dim];
+    std::memcpy(this->data, other.data, dim * sizeof(float));
 }
 
 // Copy assignment
@@ -24,8 +24,8 @@ DataPoint& DataPoint::operator=(const DataPoint& other) {
 
     delete[] this->data; // free existing memory
     this->dim = other.dim;
-    this->data = new double[dim];
-    std::memcpy(this->data, other.data, dim * sizeof(double));
+    this->data = new float[dim];
+    std::memcpy(this->data, other.data, dim * sizeof(float));
     return *this;
 }
 
@@ -35,11 +35,11 @@ DataPoint::~DataPoint() {
 }
 
 // Accessor
-double DataPoint::operator[](int index) const {
+float DataPoint::operator[](int index) const {
     return data[index];
 }
 
 // Copy method
-void DataPoint::copy(double *arr, int n) const {
-    std::memcpy(arr, data, n * sizeof(double));
+void DataPoint::copy(float *arr, int n) const {
+    std::memcpy(arr, data, n * sizeof(float));
 }
