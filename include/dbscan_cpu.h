@@ -31,7 +31,7 @@ class DBSCAN {
         DBSCAN(std::vector<DataPoint>& points, int minpts, double eps);
         ~DBSCAN();
         void run();
-        size_t labels(std::vector<size_t>& labels);
+        void result(std::vector<size_t>& labels);
         
 };
 

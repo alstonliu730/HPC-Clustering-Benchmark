@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     cout << "DBSCAN completed in " << ms << " ms" << endl;
 
     vector<size_t> labels;
-    dbscan.labels(labels); // Get the labels for each point
+    dbscan.result(labels); // Get the labels for each point
     
     // Export the results to a file
     string output_file = "output.csv";
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         cerr << "Error: No data points exported to the file." << endl;
         return 1;
     }
-    
+
     dbscan.~DBSCAN(); // Clean up the DBSCAN object
     return 0;
 }

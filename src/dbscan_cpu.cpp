@@ -175,7 +175,7 @@ void DBSCAN::run() {
     }
 }
 
-size_t DBSCAN::labels(std::vector<size_t>& res) {
+void DBSCAN::result(std::vector<size_t>& res) {
     printf("Number of clusters: %ld\n", this->cluster_id);
     size_t noises = 0;
     for (size_t i = 0; i < this->data_size; i++) {
