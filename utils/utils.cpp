@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+#include <cassert>
 
 size_t import_data(char* input_file, std::vector<DataPoint>& points) {
     std::ifstream file(input_file);
@@ -15,7 +16,7 @@ size_t import_data(char* input_file, std::vector<DataPoint>& points) {
     std::string line;
     while (std::getline(file, line)) {
         std::stringstream ss(line);
-        std::vector<double> values;
+        std::vector<float> values;
         std::string token;
 
         while (std::getline(ss, token, ',')) {
@@ -25,12 +26,37 @@ size_t import_data(char* input_file, std::vector<DataPoint>& points) {
         }
 
         if (!values.empty()) {
-            double* data = new double[values.size()];
+            float* data = new float[values.size()];
             std::copy(values.begin(), values.end(), data);
             DataPoint pt(data, values.size());
             points.push_back(pt);
             delete[] data;
         }
+    }
+
+    file.close();
+    return points.size();
+}
+
+size_t export_data(const char* output_file, const std::vector<DataPoint>& points,
+    const std::vector<size_t>& labels) {
+    assert(points.size() == labels.size());
+    std::ofstream file(output_file);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file " << output_file << std::endl;
+        return 0;
+    }
+
+    for (int i = 0; i < points.size(); i++) {
+        DataPoint point = points[i];
+        for (int j = 0; j < point.get_dim(); j++) {
+            file << point[i];
+            if (i < point.get_dim() - 1) {
+                file << ",";
+            }
+        }
+        file << "," << labels[i]; // Append the label
+        file << "\n";
     }
 
     file.close();

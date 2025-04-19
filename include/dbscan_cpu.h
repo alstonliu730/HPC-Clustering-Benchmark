@@ -24,9 +24,6 @@ class DBSCAN {
         KDTreeSingleIndex<L2_Simple<float>>* index; // FLANN index for nearest neighbor search
 
     private:
-        // Function to calculate the distance between two points
-        double getDist(DataPoint& p1, DataPoint& p2); 
-
         // Function to find all points within eps distance from the given point
         std::vector<size_t> regionQuery(size_t point, std::vector<DataPoint>& points); 
 
@@ -34,7 +31,8 @@ class DBSCAN {
         DBSCAN(std::vector<DataPoint>& points, int minpts, double eps);
         ~DBSCAN();
         void run();
-        void results();
+        size_t labels(std::vector<size_t>& labels);
+        
 };
 
 #endif // _DBSCAN_CPU_H_

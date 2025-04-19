@@ -47,16 +47,20 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
 }
 
 DBSCAN::~DBSCAN() {
+    printf("Cleaning up...\n");
+    printf("Deleting labels...\n");
     delete this->labels; // Free the labels array
     this->labels = nullptr; // Set to nullptr to avoid dangling pointer
 
+    printf("Deleting data...\n");
+    this->data->clear(); // Clear the data vector
     delete this->data; // Free the data vector
     this->data = nullptr; // Set to nullptr to avoid dangling pointer
 
+    printf("Deleting FLANN index...\n");
     this->index->~KDTreeSingleIndex(); // Free the FLANN index
-    delete this->index; // Free the index pointer
-    this->index = nullptr; // Set to nullptr to avoid dangling pointer
 
+    printf("Deleting dataset...\n");
     delete[] this->dataset.ptr(); // Free the dataset matrix memory
 }
 
@@ -84,7 +88,7 @@ double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
  * @return A vector of indices of the points within eps distance from the given point
  */
 vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
-    printf("Finding neighbors for point %ld\n", point);
+    // printf("Finding neighbors for point %ld\n", point);
     vector<size_t> neighbors;
     int max_nn = 10;
     // Prepare the query point
@@ -94,7 +98,7 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
     }
 
     // Perform a radius search
-    printf("Searching for neighbors...\n");
+    // printf("Searching for neighbors...\n");
     flann::Matrix<size_t> indices(new size_t[max_nn], 1, max_nn); // Allocate memory for indices
     flann::Matrix<float> dists(new float[max_nn], 1, max_nn); // Allocate memory for distances
 
@@ -107,15 +111,11 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
 
     printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
     
-    // Add the neighbors to the result
-    cout << "Neighbors within radius " << this->eps << ":\n";
-    cout << "Indices Dimensions: " << indices.rows << " x " << indices.cols << endl;
-    cout << "Distances Dimensions: " << dists.rows << " x " << dists.cols << endl;
-    
     for (size_t i = 0; i < num_found; i++) {
-        if (indices[i][0] != point && i < max_nn) { // Skip the point itself
-            neighbors.push_back(indices[i][0]); // Add the neighbor index to the vector
-            printf("Neighbor %ld: %ld\n", i, indices[i][0]);
+        size_t idx = indices[0][i];
+        if (idx != point && i < max_nn) { // Skip the point itself
+            neighbors.push_back(idx); // Add the neighbor index to the vector
+            // printf("Neighbor %ld: %ld\n", i, indices[i][0]);
         }
     }
 
@@ -126,8 +126,9 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
 }
 
 void DBSCAN::run() {
-    // Iterate through points 
+    // Iterate through points
     for (size_t i = 0; i < this->data_size; i++) {
+        // printf("Processing point %ld\n", i);
         if ((*this->labels)[i] != 0) continue;
 
         vector<size_t> neighbors = regionQuery(i, *this->data);
@@ -135,25 +136,25 @@ void DBSCAN::run() {
             (*this->labels)[i] = NOISE;
             continue;
         }
-        printf("Point %ld is a core point\n", i);
+        // printf("Point %ld is a core point\n", i);
 
         // Assign a new cluster id
         this->cluster_id++;
         (*this->labels)[i] = this->cluster_id;
 
         // Expand the cluster
-        printf("Expanding cluster %ld\n", this->cluster_id);
+        // printf("Expanding cluster %ld\n", this->cluster_id);
         while (!neighbors.empty()) {
             size_t neighbor = neighbors.back();
             neighbors.pop_back();
-            printf("Processing neighbor %ld\n", neighbor);
+            // printf("Processing neighbor %ld\n", neighbor);
             if (neighbor == i) {
                 continue; // Skip the point itself
             }
 
             // Change noise to cluster id
             if ((*this->labels)[neighbor] == NOISE) {
-                printf("Point %ld is no longer noise\n", neighbor);
+                // printf("Point %ld is no longer noise\n", neighbor);
                 (*this->labels)[neighbor] = this->cluster_id; 
                 continue;
             }
@@ -174,7 +175,7 @@ void DBSCAN::run() {
     }
 }
 
-void DBSCAN::results() {
+size_t DBSCAN::labels(std::vector<size_t>& res) {
     printf("Number of clusters: %ld\n", this->cluster_id);
     size_t noises = 0;
     for (size_t i = 0; i < this->data_size; i++) {
@@ -184,4 +185,5 @@ void DBSCAN::results() {
     }
   
     printf("Noises: %ld\n", noises);
+    res.assign(this->labels->begin(), this->labels->end());
 }
