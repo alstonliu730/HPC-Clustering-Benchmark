@@ -65,25 +65,6 @@ DBSCAN::~DBSCAN() {
 }
 
 /**
- * @brief Return the euclidean distance between two datapoints.
- */
-double DBSCAN::getDist(DataPoint &a, DataPoint &b) {
-    if (a.get_dim() != b.get_dim()) {
-        cerr << "Error: Dimensions of the points do not match." << std::endl;
-        return -1.0; // Return an error value
-    }
-
-    double dist = 0.0;
-    int i;
-    for(i = 0; i < a.get_dim(); i++) {
-        double diff = a[i] - b[i];
-        dist += (diff * diff); // Squared distance
-    }
-
-    return sqrt(dist); // Return the Euclidean distance
-}
-
-/**
  * @brief Find all points within eps distance from the given point
  * @return A vector of indices of the points within eps distance from the given point
  */
