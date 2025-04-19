@@ -48,6 +48,5 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    dbscan.~DBSCAN(); // Clean up the DBSCAN object
     return 0;
 }

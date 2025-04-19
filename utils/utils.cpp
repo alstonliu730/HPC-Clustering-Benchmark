@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <iomanip>
 
 size_t import_data(char* input_file, std::vector<DataPoint>& points) {
     std::ifstream file(input_file);
@@ -47,15 +48,18 @@ size_t export_data(const char* output_file, const std::vector<DataPoint>& points
         return 0;
     }
 
+    file << std::fixed << std::setprecision(6);
+
     for (int i = 0; i < points.size(); i++) {
         DataPoint point = points[i];
         for (int j = 0; j < point.get_dim(); j++) {
-            file << point[i];
-            if (i < point.get_dim() - 1) {
-                file << ",";
-            }
+            file << point[j] << ","; // Write the data point
         }
-        file << "," << labels[i]; // Append the label
+	size_t s = labels[i];
+        if (s == size_t(-1)) {
+            s = 0;
+	}
+        file << s; // Append the label  
         file << "\n";
     }
 

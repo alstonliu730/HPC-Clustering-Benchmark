@@ -11,21 +11,22 @@
 
 using namespace std;
 
-DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
+DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     // Initialize parameters
     this->minPts = minPts;
     this->eps = eps;
     this->cluster_id = 0;
     this->data_size = points.size();
-    this->data = new vector<DataPoint>(points);
-    this->labels = new vector<size_t>(this->data_size); // Allocate memory for labels
-    
+
     // Dynamically determine the dimension from the first DataPoint
     if (!points.empty()) {
         this->dim = points[0].get_dim();
     } else {
         this->dim = 0;
     }
+    this->data = new vector<DataPoint>(points.begin(), points.end()); // Copy the data points
+    this->labels = new vector<size_t>(this->data_size); // Allocate memory for labels
+    this->labels->assign(this->data_size, 0); // Initialize labels to 0
 
     // Allocate the dataset matrix for FLANN
     this->dataset = flann::Matrix<float>(new float[this->data_size * this->dim], this->data_size, this->dim);
@@ -49,6 +50,7 @@ DBSCAN::DBSCAN(vector<DataPoint>& points, int minPts, double eps) {
 DBSCAN::~DBSCAN() {
     printf("Cleaning up...\n");
     printf("Deleting labels...\n");
+    this->labels->clear(); // Clear the labels vector
     delete this->labels; // Free the labels array
     this->labels = nullptr; // Set to nullptr to avoid dangling pointer
 
@@ -68,7 +70,7 @@ DBSCAN::~DBSCAN() {
  * @brief Find all points within eps distance from the given point
  * @return A vector of indices of the points within eps distance from the given point
  */
-vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
+vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points) {
     // printf("Finding neighbors for point %ld\n", point);
     vector<size_t> neighbors;
     int max_nn = 10;
@@ -90,8 +92,8 @@ vector<size_t> DBSCAN::regionQuery(size_t point, vector<DataPoint>& points) {
         return neighbors; // Return empty vector if no neighbors found
     }
 
-    printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
-    
+    //printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
+
     for (size_t i = 0; i < num_found; i++) {
         size_t idx = indices[0][i];
         if (idx != point && i < max_nn) { // Skip the point itself

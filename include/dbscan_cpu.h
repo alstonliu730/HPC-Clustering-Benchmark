@@ -25,10 +25,10 @@ class DBSCAN {
 
     private:
         // Function to find all points within eps distance from the given point
-        std::vector<size_t> regionQuery(size_t point, std::vector<DataPoint>& points); 
+        std::vector<size_t> regionQuery(size_t point, const std::vector<DataPoint>& points); 
 
     public:
-        DBSCAN(std::vector<DataPoint>& points, int minpts, double eps);
+        DBSCAN(const std::vector<DataPoint>& points, int minpts, double eps);
         ~DBSCAN();
         void run();
         void result(std::vector<size_t>& labels);
