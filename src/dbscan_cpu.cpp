@@ -136,10 +136,9 @@ void DBSCAN::run() {
 	    #pragma omp single 
         {
             printf("DBSCAN threads: %ld\n", nThreads);
-            printf("Chunk size: %ld\n", chunk_size);
         }
         
-        #pragma omp parallel for schedule(static, chunk_size)
+        #pragma omp parallel for schedule(dynamic, 256)
         for (size_t i = 0; i < nPoints; i++) {
             if (this->visited[i]) continue;
             this->visited[i] = true; // Mark the point as visited
