@@ -144,7 +144,7 @@ void DBSCAN::run() {
             this->visited[i] = true; // Mark the point as visited
 
             vector<size_t> neighbors = regionQuery(i, data);
-            if (neighbors.size() < minPts) {
+            if (neighbors.size() < static_cast<size_t>(minPts)) {
                 this->labels[i].store(NOISE, memory_order_release);
                 continue;
             }
@@ -173,8 +173,8 @@ void DBSCAN::run() {
                 bool updated = this->labels[neighbor].compare_exchange_strong(prev, local_cluster_id, memory_order_relaxed);
                 if (updated) {
                     vector<size_t> new_neighbors = regionQuery(neighbor, data);
-                    if (new_neighbors.size() >= minPts) {
-                        copy(new_neighbors.begin(), new_neighbors.end(), back_inserter(neighbors)); // Add new neighbors to the list
+                    if (new_neighbors.size() >= static_cast<size_t>(minPts)) {
+                        copy(new_neighbors.begin(), new_neighbors.end(), back_inserter(stack)); // Add new neighbors to the list
                     }
                 }
             }
