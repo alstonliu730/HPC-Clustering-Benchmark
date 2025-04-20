@@ -82,8 +82,7 @@ DBSCAN::~DBSCAN() {
 vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points) {
     // printf("Finding neighbors for point %ld\n", point);
     int max_nn = this->minPts * 5; // Maximum number of neighbors to search for
-    vector<size_t> neighbors(max_nn);
-
+    
     // Prepare the query point
     flann::Matrix<float> query(new float[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
