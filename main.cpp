@@ -30,7 +30,12 @@ int main(int argc, char** argv) {
 
     // Trying high eps distance
     DBSCAN dbscan(points, 5, 1.0f); // Example parameters: minPts = 5, eps = 1
+
+    #ifdef USE_MPI
+    dbscan.mpi_run(); // Run the DBSCAN algorithm with MPI
+    #else
     dbscan.run(); // Run the DBSCAN algorithm
+    #endif // USE_MPI
     
     // Benchmarking the DBSCAN algorithm
     auto end = chrono::high_resolution_clock::now();

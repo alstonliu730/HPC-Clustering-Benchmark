@@ -1,14 +1,13 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -O2
+# Compiler and flags
 CXX = g++
-DEBUG = -g
+MPI_CXX = mpicxx
+CFLAGS = -Wall -Wextra -O2 -std=c++11
+LDFLAGS = -fopenmp
 
-# CUDA compiler
-NVCC = nvcc
-CUDA_FLAGS = -O3
-OMP_FLAGS = -fopenmp
+# MPI flag (set to 1 to enable MPI, 0 to disable)
+USE_MPI = 0
 
-# Source directory
+# Source directories
 SRC_DIR = src
 INC_DIR = include
 UTILS_DIR = utils
@@ -16,20 +15,33 @@ FLANN_DIR = flann/src/cpp
 LZ4_DIR = external/lz4/lib
 LZ4_LIB = $(LZ4_DIR)/liblz4.a
 
-# Targets
-TARGETS = main dbscan-cpu dbscan-cuda
+# Object files
+OBJS = $(SRC_DIR)/dbscan_cpu.cpp $(SRC_DIR)/datapoint.cpp $(SRC_DIR)/main.cpp
+MPI_OBJS = $(SRC_DIR)/dbscan_cpu.cpp $(SRC_DIR)/datapoint.cpp main_mpi.cpp
 
-# main
-#all:
-#	make $(TARGETS)
+# Include directories
+INCLUDES = -I$(INC_DIR)/ -I$(UTILS_DIR)/ -I$(FLANN_DIR)/ -I$(LZ4_DIR)/
 
-main: main.cpp $(UTILS_DIR)/*.cpp $(SRC_DIR)/*.cpp
-	$(CXX) $(CFLAGS) $(DEBUG) $(OMP_FLAGS) \
-	-I $(INC_DIR)/ -I $(UTILS_DIR)/ -I $(FLANN_DIR)/ -I $(LZ4_DIR) \
-	-o $@.exe $^ $(LZ4_LIB)
+# MPI-specific flags and libraries
+MPI_CFLAGS = -I/usr/include/mpi
+MPI_LDFLAGS = -lmpi
 
+# Target executable
+TARGET = main 
 
-# dbscan-cuda:
+# Build rules
+ifeq ($(USE_MPI), 1)
+	CXX = $(MPI_CXX)
+	OBJS = $(MPI_OBJS)
+    CFLAGS += $(MPI_CFLAGS)
+    LDFLAGS += $(MPI_LDFLAGS)
+    DEFINES += -DUSE_MPI
+endif
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+    $(CXX) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f $(TARGETS)
+    rm -f $(TARGET) *.o

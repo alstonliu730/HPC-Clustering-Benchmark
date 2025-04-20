@@ -2,17 +2,150 @@
 #include <vector>
 #include <math.h>
 #include <omp.h>
-#include <functional>
+#include <sstream>
+#include <vector>
+
 #include "dbscan_cpu.h"
 #include "datapoint.h"
-#include "rtree.h"
 #include "utils.h"
 #include "flann/flann.hpp"
 
+#ifdef USE_MPI
+#include <mpi.h>
+
+#define ROOT 0
+
+void DBSCAN::serializeKDTree(flann::KDTreeSingleIndex<flann::L2<float>>& index, std::vector<char>& buffer) {
+    std::ostringstream oss(std::ios::binary);
+    flann::serialization::SaveArchive sa(oss);
+    sa & index; // Serialize the k-d tree into the stream
+    std::string serialized_data = oss.str();
+    buffer.assign(serialized_data.begin(), serialized_data.end()); // Copy to buffer
+}
+
+void DBSCAN::broadcastKDTree(flann::KDTreeSingleIndex<flann::L2<float>>& index, MPI_Comm comm) {
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    std::vector<char> buffer;
+
+    if (rank == ROOT) {
+        // Serialize the KDTree on the root process
+        serializeKDTree(index, buffer);
+    }
+
+    // Broadcast the size of the serialized data
+    int buffer_size = buffer.size();
+    MPI_Bcast(&buffer_size, 1, MPI_INT, ROOT, comm);
+
+    // Resize the buffer on non-root processes
+    if (rank != ROOT) {
+        buffer.resize(buffer_size);
+    }
+
+    // Broadcast the serialized data
+    MPI_Bcast(buffer.data(), buffer_size, MPI_CHAR, ROOT, comm);
+
+    // Deserialize the KDTree on non-root processes
+    if (rank != ROOT) {
+        std::istringstream iss(std::string(buffer.begin(), buffer.end()), std::ios::binary);
+        flann::serialization::LoadArchive la(iss);
+        la & index; // Deserialize the k-d tree
+    }
+}
+
+void DBSCAN::mpi_run() {
+    // Initialize MPI
+    MPI_Init(nullptr, nullptr);
+
+    // Get the number of processes and the rank of this process
+    int world_size, world_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Calculate the local size for each process
+    std::vector<int> sendcounts(world_size);
+    std::vector<int> displs(world_size);
+    std::vector<float> sendbuffer(this->data_size * this->dim); // flatten the data points
+    if (world_rank == 0) {
+        // Prepare the send buffer for the root process
+        for (size_t i = 0; i < this->data_size; i++) {
+            for (int j = 0; j < this->dim; j++) {
+                sendbuffer[i * this->dim + j] = (*this->data)[i][j];
+            }
+        }
+
+        // Calculate the send counts and displacements for each process
+        printf("Distributing data points among %d processes...\n", world_size);
+        int total_size = this->data_size * this->dim;
+        int offset = 0;
+        for (int i = 0; i < world_size; i++) {
+            sendcounts[i] = total_size / world_size 
+                + (i < total_size % world_size ? 1 : 0);
+            displs[i] = offset;
+            offset += sendcounts[i];
+        }
+    }
+    // Broadcast the dimension of the data points to all processes
+    MPI_Bcast(&this->dim, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(&this->data_size, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(&this->minPts, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(&this->eps, 1, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
+
+    // Tell each process how many items it will receive
+    int local_count; // Number of floating point numbers to receive
+    MPI_Scatter(sendcounts.data(), 1, MPI_INT, &local_count, 1, MPI_INT, ROOT, MPI_COMM_WORLD);   
+
+    vector<float> local_data(local_count); // Allocate memory for local data points (x0, y0, z0, ...)
+    MPI_Scatterv(sendbuffer.data(), sendcounts.data(), displs.data(), MPI_FLOAT, 
+        local_data.data(), local_count, MPI_FLOAT, ROOT, MPI_COMM_WORLD);
+
+    // Broadcast the KDTree from the root process to all other processes
+    broadcastKDTree(*this->index, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD); // Synchronize all processes
+
+    // DEBUGGING 
+    if (world_rank == 1) {
+        // Check the received data
+        printf("Process %d received %d data points:\n", world_rank, local_count / this->dim);
+        
+        // Check if the index is valid
+        this->index->
+    }
+    // Create a local vector of DataPoint objects for each process
+    size_t local_size = local_count / this->dim; // Number of data points for this process
+    vector<DataPoint> local_points(local_size);
+
+    // Fill the local points with the received data
+    for (size_t i = 0; i < local_size; i++) {
+        float* data_ptr = new float[this->dim]; // Allocate memory for the data array
+        for (int j = 0; j < this->dim; j++) {
+            data_ptr[j] = local_data[i * this->dim + j];
+        }
+        DataPoint point(data_ptr, this->dim); // Create a DataPoint object
+        local_points[i] = point; // Assign the DataPoint object to the local points vector
+        delete[] data_ptr; // Free the allocated memory for the data array
+    }
+
+    // Create a local labels vector for each process
+    vector<int> local_labels(local_size, -1); // Initialize labels to 0
+    for (size_t i = 0; i < local_size; i++) {
+        local_labels[i] = 0; // Initialize labels to 0
+    }
+}
+#endif // USE_MPI
+
 using namespace std;
 
+/**
+ * @brief Constructor for DBSCAN class
+ * @param points Vector of DataPoint objects
+ * @param minPts Minimum number of points in a neighborhood to form a dense region
+ * @param eps Maximum distance between two points to be considered neighbors
+ */
 DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     // Initialize parameters
+    printf("----- Initializing DBSCAN -----\n");
     this->minPts = minPts;
     this->eps = eps;
     this->cluster_id = 0;
@@ -47,8 +180,11 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     this->index->buildIndex();
 }
 
+/**
+ * @brief Destructor for DBSCAN class
+ */
 DBSCAN::~DBSCAN() {
-    printf("Cleaning up...\n");
+    printf("----- Cleaning up -----\n");
     printf("Deleting labels...\n");
     this->labels->clear(); // Clear the labels vector
     delete this->labels; // Free the labels array
@@ -70,14 +206,14 @@ DBSCAN::~DBSCAN() {
  * @brief Find all points within eps distance from the given point
  * @return A vector of indices of the points within eps distance from the given point
  */
-vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points) {
+vector<size_t> DBSCAN::regionQuery(const size_t p_idx, const DataPoint& point, const int max_nn = 10) {
     // printf("Finding neighbors for point %ld\n", point);
     vector<size_t> neighbors;
-    int max_nn = 10;
+
     // Prepare the query point
     flann::Matrix<float> query(new float[this->dim], 1, this->dim);
     for (int i = 0; i < this->dim; i++) {
-        query[0][i] = points[point][i];
+        query[0][i] = point[i];
     }
 
     // Perform a radius search
@@ -94,9 +230,9 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
 
     //printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
 
-    for (size_t i = 0; i < num_found; i++) {
+    for (size_t i = 0; (i < num_found && i < max_nn); i++) {
         size_t idx = indices[0][i];
-        if (idx != point && i < max_nn) { // Skip the point itself
+        if (idx != p_idx) { // Skip the point itself
             neighbors.push_back(idx); // Add the neighbor index to the vector
             // printf("Neighbor %ld: %ld\n", i, indices[i][0]);
         }
@@ -108,13 +244,19 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
     return neighbors;
 }
 
+/**
+ * @brief Run the DBSCAN algorithm on the class data
+ */
 void DBSCAN::run() {
+    int max_nn = this->minPts * 2; // Maximum number of neighbors to search for
+    printf("------ Running DBSCAN with max_nn(%d) & minPts(%d) ------\n", max_nn, this->minPts);
+
     // Iterate through points
     for (size_t i = 0; i < this->data_size; i++) {
         // printf("Processing point %ld\n", i);
         if ((*this->labels)[i] != 0) continue;
 
-        vector<size_t> neighbors = regionQuery(i, *this->data);
+        vector<size_t> neighbors = regionQuery(i, (*this->data)[i]);
         if (neighbors.size() < this->minPts) {
             (*this->labels)[i] = NOISE;
             continue;
@@ -149,7 +291,7 @@ void DBSCAN::run() {
             (*this->labels)[neighbor] = this->cluster_id; // Assign cluster id
             
             // Search for neighbors of the neighbor
-            vector<size_t> newNeighbors = regionQuery(neighbor, *this->data);
+            vector<size_t> newNeighbors = regionQuery(neighbor, (*this->data)[neighbor]);
             if (newNeighbors.size() >= this->minPts) {
                 // Merge the new neighbors into the existing neighbors
                 neighbors.insert(neighbors.end(), newNeighbors.begin(), newNeighbors.end());
@@ -158,7 +300,13 @@ void DBSCAN::run() {
     }
 }
 
+/**
+ * @brief Get the result of the clustering
+ * @param res Vector to store the cluster labels for each point
+ * @return void
+ */
 void DBSCAN::result(std::vector<size_t>& res) {
+    printf("------ DBSCAN Result ------\n");
     printf("Number of clusters: %ld\n", this->cluster_id);
     size_t noises = 0;
     for (size_t i = 0; i < this->data_size; i++) {
