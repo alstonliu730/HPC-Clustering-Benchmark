@@ -28,9 +28,9 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     } else {
         this->dim = 0;
     }
+
     this->data = vector<DataPoint>(points.begin(), points.end()); // Copy the data points
     this->labels = vector<std::atomic<size_t>>(this->data_size); // Allocate memory for labels
-    // this->labels->assign(this->data_size, 0); // Initialize labels to 0
     this->visited = vector<bool>(this->data_size, false); // Initialize visited array to false
     
     // Allocate the dataset matrix for FLANN
@@ -42,14 +42,15 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     omp_set_nested(0);
     #pragma omp parallel 
     {
-    int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
-    #pragma omp for schedule(static, chunk_size)
-    for (size_t i = 0; i < this->data_size; i++) {
-        for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = this->data[i][j];
+        int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
+        #pragma omp for schedule(static, chunk_size)
+        for (size_t i = 0; i < this->data_size; i++) {
+            for (int j = 0; j < this->dim; j++) {
+                this->dataset[i][j] = this->data[i][j];
+            }
         }
     }
-    }
+
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
     this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<float>>(this->dataset, flann::KDTreeSingleIndexParams(16));
@@ -80,8 +81,8 @@ DBSCAN::~DBSCAN() {
  */
 vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points) {
     // printf("Finding neighbors for point %ld\n", point);
-    vector<size_t> neighbors;
     int max_nn = this->minPts * 5; // Maximum number of neighbors to search for
+    vector<size_t> neighbors(max_nn);
 
     // Prepare the query point
     flann::Matrix<float> query(new float[this->dim], 1, this->dim);
@@ -95,25 +96,22 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
     flann::Matrix<float> dists(new float[max_nn], 1, max_nn); // Allocate memory for distances
 
     // Perform the radius search using FLANN
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(64, 0.f, false));
+    flann::SearchParams search_p(64, 0.f, false); // Set search parameters
+    search_p.max_neighbors = max_nn; // Set maximum number of neighbors to search for
+    search_p.cores = 2; // Set number of threads to use for search
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), );
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
-        return neighbors; // Return empty vector if no neighbors found
+        return {}; // Return empty vector if no neighbors found
     }
-
-    //printf("Neighbors found: %d\n", num_found); // Print the number of neighbors found
-
-    for (size_t i = 0; i < num_found; i++) {
-        size_t idx = indices[0][i];
-        if (idx != point && neighbors.size() < max_nn) { // Skip the point itself
-            neighbors.push_back(idx); // Add the neighbor index to the vector
-            // printf("Neighbor %ld: %ld\n", i, indices[i][0]);
-        }
-    }
+    
+    // Copy the found neighbors to the vector
+    vector<size_t> neighbors(indices[0], indices[0] + std::min(num_found, max_nn)); 
 
     delete[] query.ptr(); // Free the query matrix memory
     delete[] indices.ptr(); // Free the indices matrix memory
     delete[] dists.ptr(); // Free the distances matrix memory
+
     return neighbors;
 }
 
@@ -129,7 +127,7 @@ void DBSCAN::run() {
     #pragma omp parallel 
     {
         // Initialize OpenMP parameters
-        size_t nThreads = omp_get_num_threads(); // Number of threads available
+        size_t nThreads = omp_get_num_threads() - 2; // Number of threads available
         // printf("Number of threads: %ld\n", nThreads);
         size_t chunk_size = (nPoints / nThreads) + 1; // Calculate chunk size for parallel processing
 
@@ -138,7 +136,7 @@ void DBSCAN::run() {
             printf("DBSCAN threads: %ld\n", nThreads);
         }
         
-        #pragma omp parallel for schedule(dynamic, 256)
+        #pragma omp parallel for schedule(dynamic, 1024)
         for (size_t i = 0; i < nPoints; i++) {
             if (this->visited[i]) continue;
             this->visited[i] = true; // Mark the point as visited
