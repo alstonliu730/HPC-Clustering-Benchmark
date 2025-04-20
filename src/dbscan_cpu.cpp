@@ -36,17 +36,19 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
 
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
-    omp_set_num_threads(4); // Set number of threads before the parallel block
-    omp_set_nested(0);
+
+    omp_set_max_active_levels(2);     // Limit nesting depth
+    omp_set_num_threads(16);           // Limit outer threads
+
     #pragma omp parallel 
     {
-    int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
-    #pragma omp for schedule(static, chunk_size)
-    for (size_t i = 0; i < this->data_size; i++) {
-        for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = this->data[i][j];
+        int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
+        #pragma omp for schedule(static, chunk_size)
+        for (size_t i = 0; i < this->data_size; i++) {
+            for (int j = 0; j < this->dim; j++) {
+                this->dataset[i][j] = this->data[i][j];
+            }
         }
-    }
     }
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
@@ -90,7 +92,9 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
     flann::Matrix<float> dists(new float[max_nn], 1, max_nn); // Allocate memory for distances
 
     // Perform the radius search using FLANN
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(64, 0.f, false));
+    flann::SearchParams rad_params = flann::SearchParams(64, 0.f, false);
+    rad_params.cores = 2;
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), rad_params);
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
         return neighbors; // Return empty vector if no neighbors found
