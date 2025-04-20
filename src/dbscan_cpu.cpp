@@ -29,7 +29,7 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     }
     this->data = new vector<DataPoint>(points.begin(), points.end()); // Copy the data points
     this->labels = new vector<std::atomic<size_t>>(this->data_size); // Allocate memory for labels
-    this->labels->assign(this->data_size, 0); // Initialize labels to 0
+    // this->labels->assign(this->data_size, 0); // Initialize labels to 0
 
     // Allocate the dataset matrix for FLANN
     this->dataset = flann::Matrix<float>(new float[this->data_size * this->dim], this->data_size, this->dim);
