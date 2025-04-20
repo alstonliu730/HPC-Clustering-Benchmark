@@ -119,7 +119,6 @@ void DBSCAN::run() {
     size_t nPoints = this->data_size; // Number of data points
     size_t next_cluster_id = 1;
     const vector<DataPoint> data = *this->data; // Copy the data points
-    vector<std::atomic<size_t>> labels = *this->labels; // Copy the labels
 
     // Initialize OpenMP parameters
     size_t nThreads = omp_get_max_threads() / 2; // Number of threads available
@@ -129,11 +128,11 @@ void DBSCAN::run() {
     // Iterate through points
     #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
     for (size_t i = 0; i < nPoints; i++) {
-        if (labels[i].load() != 0) continue;
+        if ((*this->labels)[i].load() != 0) continue;
 
         vector<size_t> neighbors = regionQuery(i, data);
         if (neighbors.size() < minPts) {
-            labels[i].store(NOISE);
+            (*this->labels)[i].store(NOISE);
             continue;
         }
 
@@ -143,7 +142,7 @@ void DBSCAN::run() {
             local_cluster_id = next_cluster_id++;
         }
 
-        labels[i].store(local_cluster_id);
+        (*this->labels)[i].store(local_cluster_id);
 
         vector<size_t> stack(neighbors.begin(), neighbors.end());
         while (!stack.empty()) {
@@ -152,15 +151,15 @@ void DBSCAN::run() {
 
             if (neighbor == i) continue;
 
-            size_t prev = labels[neighbor].load();
+            size_t prev = (*this->labels)[neighbor].load();
             if (prev == NOISE) {
-                labels[neighbor].store(local_cluster_id);
+                (*this->labels)[neighbor].store(local_cluster_id);
                 continue;
             }
 
             if (prev != 0) continue;
 
-            bool updated = labels[neighbor].compare_exchange_strong(prev, local_cluster_id);
+            bool updated = (*this->labels)[neighbor].compare_exchange_strong(prev, local_cluster_id);
             if (updated) {
                 vector<size_t> new_neighbors = regionQuery(neighbor, data);
                 if (new_neighbors.size() >= minPts) {
@@ -169,9 +168,7 @@ void DBSCAN::run() {
             }
         }
     }
-
-    // Update the labels vector
-    this->labels->assign(labels.begin(), labels.end());
+    
     this->cluster_id = next_cluster_id - 1; // Update the cluster ID
 }
 
