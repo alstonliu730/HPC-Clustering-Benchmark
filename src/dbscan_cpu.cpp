@@ -27,8 +27,8 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     } else {
         this->dim = 0;
     }
-    this->data = new vector<DataPoint>(points.begin(), points.end()); // Copy the data points
-    this->labels = new vector<std::atomic<size_t>>(this->data_size); // Allocate memory for labels
+    this->data = vector<DataPoint>(points.begin(), points.end()); // Copy the data points
+    this->labels = vector<std::atomic<size_t>>(this->data_size); // Allocate memory for labels
     // this->labels->assign(this->data_size, 0); // Initialize labels to 0
 
     // Allocate the dataset matrix for FLANN
@@ -44,7 +44,7 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     #pragma omp for schedule(static, chunk_size)
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
-            this->dataset[i][j] = (*this->data)[i][j];
+            this->dataset[i][j] = this->data[i][j];
         }
     }
     }
@@ -57,14 +57,10 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
 DBSCAN::~DBSCAN() {
     printf("Cleaning up...\n");
     printf("Deleting labels...\n");
-    this->labels->clear(); // Clear the labels vector
-    delete this->labels; // Free the labels array
-    this->labels = nullptr; // Set to nullptr to avoid dangling pointer
+    this->labels.clear(); // Clear the labels vector
 
     printf("Deleting data...\n");
-    this->data->clear(); // Clear the data vector
-    delete this->data; // Free the data vector
-    this->data = nullptr; // Set to nullptr to avoid dangling pointer
+    this->data.clear(); // Clear the data vector
 
     printf("Deleting FLANN index...\n");
     this->index->~KDTreeSingleIndex(); // Free the FLANN index
@@ -122,7 +118,7 @@ void DBSCAN::run() {
     int minPts = this->minPts; // Minimum number of points in a neighborhood to form a dense region
     size_t nPoints = this->data_size; // Number of data points
     size_t next_cluster_id = 1;
-    const vector<DataPoint> data = *this->data; // Copy the data points
+    const vector<DataPoint> data = this->data; // Copy the data points
 
     // Iterate through points
     #pragma omp parallel 
@@ -138,11 +134,11 @@ void DBSCAN::run() {
 
         #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
         for (size_t i = 0; i < nPoints; i++) {
-            if ((*this->labels)[i].load() != 0) continue;
+            if (this->labels[i].load() != 0) continue;
     
             vector<size_t> neighbors = regionQuery(i, data);
             if (neighbors.size() < minPts) {
-                (*this->labels)[i].store(NOISE);
+                this->labels[i].store(NOISE);
                 continue;
             }
     
@@ -152,7 +148,7 @@ void DBSCAN::run() {
                 local_cluster_id = next_cluster_id++;
             }
     
-            (*this->labels)[i].store(local_cluster_id);
+            this->labels[i].store(local_cluster_id);
     
             vector<size_t> stack(neighbors.begin(), neighbors.end());
             while (!stack.empty()) {
@@ -161,15 +157,15 @@ void DBSCAN::run() {
     
                 if (neighbor == i) continue;
     
-                size_t prev = (*this->labels)[neighbor].load();
+                size_t prev = this->labels[neighbor].load();
                 if (prev == NOISE) {
-                    (*this->labels)[neighbor].store(local_cluster_id);
+                    this->labels[neighbor].store(local_cluster_id);
                     continue;
                 }
     
                 if (prev != 0) continue;
     
-                bool updated = (*this->labels)[neighbor].compare_exchange_strong(prev, local_cluster_id);
+                bool updated = this->labels[neighbor].compare_exchange_strong(prev, local_cluster_id);
                 if (updated) {
                     vector<size_t> new_neighbors = regionQuery(neighbor, data);
                     if (new_neighbors.size() >= minPts) {
@@ -191,11 +187,11 @@ void DBSCAN::result(std::vector<size_t>& res) {
     printf("Number of clusters: %ld\n", this->cluster_id);
     size_t noises = 0;
     for (size_t i = 0; i < this->data_size; i++) {
-      if ((*this->labels)[i].load() == NOISE) {
+      if (this->labels[i].load() == NOISE) {
         noises++;
       }
     }
   
     printf("Noises: %ld\n", noises);
-    res.assign(this->labels->begin(), this->labels->end());
+    res.assign(this->labels.begin(), this->labels.end());
 }

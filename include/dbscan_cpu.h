@@ -15,10 +15,10 @@ class DBSCAN {
         double eps; // Maximum distance between two points to be considered neighbors
 
         size_t cluster_id; // Current cluster ID
-        std::vector<std::atomic<size_t>>* labels; // Array to store cluster labels for each point
+        std::vector<std::atomic<size_t>> labels; // Array to store cluster labels for each point
         int dim; // Dimension of the data points
         
-        std::vector<DataPoint>* data; // pointer to the data points
+        std::vector<DataPoint> data; // pointer to the data points
         size_t data_size; // Size of the data array
 
         Matrix<float> dataset; // Matrix to store the dataset for FLANN
