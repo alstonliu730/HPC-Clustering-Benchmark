@@ -173,6 +173,10 @@ void DBSCAN::run() {
                     }
                 }
             }
+
+            // clear the stack for the next iteration
+            stack.clear();
+            neighbors.clear();
         }
 
         #pragma omp barrier // Ensure all threads have completed before updating the cluster ID
