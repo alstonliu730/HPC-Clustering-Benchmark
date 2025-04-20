@@ -5,7 +5,7 @@ DEBUG = -g
 
 # CUDA compiler
 NVCC = nvcc
-CUDA_FLAGS = -O3
+CUDA_FLAGS = -std=c++11 -O3
 OMP_FLAGS = -fopenmp
 
 # Source directory
@@ -29,7 +29,8 @@ main: main.cpp $(UTILS_DIR)/*.cpp $(SRC_DIR)/*.cpp
 	-o $@.exe $^ $(LZ4_LIB)
 
 
-# dbscan-cuda:
+dbscan-cuda: dbscan.cu
+	$(NVCC) $(CUDA_FLAGS) -o $@ 
 
 clean:
 	rm -f $(TARGETS)
