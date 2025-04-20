@@ -174,7 +174,7 @@ void DBSCAN::run() {
                 if (updated) {
                     vector<size_t> new_neighbors = regionQuery(neighbor, data);
                     if (new_neighbors.size() >= minPts) {
-                        stack.insert(stack.end(), new_neighbors.begin(), new_neighbors.end());
+                        copy(new_neighbors.begin(), new_neighbors.end(), back_inserter(neighbors)); // Add new neighbors to the list
                     }
                 }
             }
