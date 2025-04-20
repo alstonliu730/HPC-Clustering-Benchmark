@@ -120,56 +120,62 @@ void DBSCAN::run() {
     size_t next_cluster_id = 1;
     const vector<DataPoint> data = *this->data; // Copy the data points
 
-    // Initialize OpenMP parameters
-    size_t nThreads = omp_get_max_threads() / 2; // Number of threads available
-    printf("Number of threads: %ld\n", nThreads);
-    size_t chunk_size = (nPoints / nThreads) + 1; // Calculate chunk size for parallel processing
-
     // Iterate through points
-    #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
-    for (size_t i = 0; i < nPoints; i++) {
-        if ((*this->labels)[i].load() != 0) continue;
-
-        vector<size_t> neighbors = regionQuery(i, data);
-        if (neighbors.size() < minPts) {
-            (*this->labels)[i].store(NOISE);
-            continue;
-        }
-
-        size_t local_cluster_id;
-        #pragma omp critical
-        {
-            local_cluster_id = next_cluster_id++;
-        }
-
-        (*this->labels)[i].store(local_cluster_id);
-
-        vector<size_t> stack(neighbors.begin(), neighbors.end());
-        while (!stack.empty()) {
-            size_t neighbor = stack.back();
-            stack.pop_back();
-
-            if (neighbor == i) continue;
-
-            size_t prev = (*this->labels)[neighbor].load();
-            if (prev == NOISE) {
-                (*this->labels)[neighbor].store(local_cluster_id);
+    #pragma omp parallel 
+    {
+        // Initialize OpenMP parameters
+        size_t nThreads = omp_get_max_threads() / 2; // Number of threads available
+        printf("Number of threads: %ld\n", nThreads);
+        size_t chunk_size = (nPoints / nThreads) + 1; // Calculate chunk size for parallel processing
+        #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
+        for (size_t i = 0; i < nPoints; i++) {
+            if ((*this->labels)[i].load() != 0) continue;
+    
+            vector<size_t> neighbors = regionQuery(i, data);
+            if (neighbors.size() < minPts) {
+                (*this->labels)[i].store(NOISE);
                 continue;
             }
-
-            if (prev != 0) continue;
-
-            bool updated = (*this->labels)[neighbor].compare_exchange_strong(prev, local_cluster_id);
-            if (updated) {
-                vector<size_t> new_neighbors = regionQuery(neighbor, data);
-                if (new_neighbors.size() >= minPts) {
-                    stack.insert(stack.end(), new_neighbors.begin(), new_neighbors.end());
+    
+            size_t local_cluster_id;
+            #pragma omp critical
+            {
+                local_cluster_id = next_cluster_id++;
+            }
+    
+            (*this->labels)[i].store(local_cluster_id);
+    
+            vector<size_t> stack(neighbors.begin(), neighbors.end());
+            while (!stack.empty()) {
+                size_t neighbor = stack.back();
+                stack.pop_back();
+    
+                if (neighbor == i) continue;
+    
+                size_t prev = (*this->labels)[neighbor].load();
+                if (prev == NOISE) {
+                    (*this->labels)[neighbor].store(local_cluster_id);
+                    continue;
+                }
+    
+                if (prev != 0) continue;
+    
+                bool updated = (*this->labels)[neighbor].compare_exchange_strong(prev, local_cluster_id);
+                if (updated) {
+                    vector<size_t> new_neighbors = regionQuery(neighbor, data);
+                    if (new_neighbors.size() >= minPts) {
+                        stack.insert(stack.end(), new_neighbors.begin(), new_neighbors.end());
+                    }
                 }
             }
         }
+
+        #pragma omp barrier // Ensure all threads have completed before updating the cluster ID
+        #pragma omp critical
+        {
+            this->cluster_id = next_cluster_id - 1; // Update the cluster ID
+        }
     }
-    
-    this->cluster_id = next_cluster_id - 1; // Update the cluster ID
 }
 
 void DBSCAN::result(std::vector<size_t>& res) {
