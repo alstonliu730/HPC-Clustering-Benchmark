@@ -99,7 +99,7 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
     flann::SearchParams search_p(64, 0.f, false); // Set search parameters
     search_p.max_neighbors = max_nn; // Set maximum number of neighbors to search for
     search_p.cores = 2; // Set number of threads to use for search
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), );
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), search_p);
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
         return {}; // Return empty vector if no neighbors found
