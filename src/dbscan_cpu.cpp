@@ -117,8 +117,8 @@ void DBSCAN::run() {
     // Initialize parameters for data locality
     int minPts = this->minPts; // Minimum number of points in a neighborhood to form a dense region
     size_t nPoints = this->data_size; // Number of data points
-    size_t next_cluster_id = 1;
     const vector<DataPoint> data = this->data; // Copy the data points
+    atomic<size_t> next_cluster_id(1); // Atomic variable to ensure thread safety for cluster ID
 
     // Iterate through points
     #pragma omp parallel 
@@ -127,28 +127,27 @@ void DBSCAN::run() {
         size_t nThreads = omp_get_num_threads(); // Number of threads available
         // printf("Number of threads: %ld\n", nThreads);
         size_t chunk_size = (nPoints / nThreads) + 1; // Calculate chunk size for parallel processing
-	#pragma omp single 
+
+	    #pragma omp single 
         {
             printf("DBSCAN threads: %ld\n", nThreads);
+            printf("Chunk size: %ld\n", chunk_size);
         }
-
-        #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
+        
+        #pragma omp parallel for schedule(static, chunk_size)
         for (size_t i = 0; i < nPoints; i++) {
             if (this->labels[i].load() != 0) continue;
     
             vector<size_t> neighbors = regionQuery(i, data);
             if (neighbors.size() < minPts) {
-                this->labels[i].store(NOISE);
+                this->labels[i].store(NOISE, memory_order_relaxed);
                 continue;
             }
     
             size_t local_cluster_id;
-            #pragma omp critical
-            {
-                local_cluster_id = next_cluster_id++;
-            }
+            local_cluster_id = next_cluster_id.fetch_add(1, memory_order_relaxed); // Increment the cluster ID atomically
     
-            this->labels[i].store(local_cluster_id);
+            this->labels[i].store(local_cluster_id, memory_order_relaxed); // Assign the cluster ID to the current point
     
             vector<size_t> stack(neighbors.begin(), neighbors.end());
             while (!stack.empty()) {
@@ -157,15 +156,15 @@ void DBSCAN::run() {
     
                 if (neighbor == i) continue;
     
-                size_t prev = this->labels[neighbor].load();
+                size_t prev = this->labels[neighbor].load(memory_order_relaxed);
                 if (prev == NOISE) {
-                    this->labels[neighbor].store(local_cluster_id);
+                    this->labels[neighbor].store(local_cluster_id, memory_order_relaxed);
                     continue;
                 }
     
                 if (prev != 0) continue;
     
-                bool updated = this->labels[neighbor].compare_exchange_strong(prev, local_cluster_id);
+                bool updated = this->labels[neighbor].compare_exchange_strong(prev, local_cluster_id, memory_order_relaxed);
                 if (updated) {
                     vector<size_t> new_neighbors = regionQuery(neighbor, data);
                     if (new_neighbors.size() >= minPts) {
@@ -180,9 +179,9 @@ void DBSCAN::run() {
         }
 
         #pragma omp barrier // Ensure all threads have completed before updating the cluster ID
-        #pragma omp critical
+        #pragma omp single
         {
-            this->cluster_id = next_cluster_id - 1; // Update the cluster ID
+            this->cluster_id = next_cluster_id.load(memory_order_relaxed) - 1; // Update the cluster ID
         }
     }
 }
