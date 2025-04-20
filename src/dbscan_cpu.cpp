@@ -5,6 +5,7 @@
 #include <functional>
 #include <algorithm>
 #include <atomic>
+#include <queue>
 
 #include "dbscan_cpu.h"
 #include "datapoint.h"
@@ -174,7 +175,7 @@ void DBSCAN::run() {
                 if (updated) {
                     vector<size_t> new_neighbors = regionQuery(neighbor, data);
                     if (new_neighbors.size() >= static_cast<size_t>(minPts)) {
-                        copy(new_neighbors.begin(), new_neighbors.end(), back_inserter(stack)); // Add new neighbors to the list
+                        move(new_neighbors.begin(), new_neighbors.end(), back_inserter(stack)); // Add new neighbors to the list
                     }
                 }
             }
