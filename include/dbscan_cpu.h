@@ -2,6 +2,7 @@
 #define _DBSCAN_CPU_H_
 
 #include <vector>
+#include <atomic>
 #include "datapoint.h"
 #include "flann/flann.hpp"
 
@@ -14,7 +15,7 @@ class DBSCAN {
         double eps; // Maximum distance between two points to be considered neighbors
 
         size_t cluster_id; // Current cluster ID
-        std::vector<size_t>* labels; // Array to store cluster labels for each point
+        std::vector<std::atomic<size_t>>* labels; // Array to store cluster labels for each point
         int dim; // Dimension of the data points
         
         std::vector<DataPoint>* data; // pointer to the data points

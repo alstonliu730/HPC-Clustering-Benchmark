@@ -6,7 +6,7 @@ import matplotlib.cm as cm
 import numpy as np
 
 # Load the CSV file
-file_path = 'result/output1.csv'  # Update this path as needed
+file_path = 'output.csv'  # Update this path as needed
 df = pd.read_csv(file_path, header=None, names=["x", "y", "z", "cluster_id"])
 
 # Get unique cluster IDs
