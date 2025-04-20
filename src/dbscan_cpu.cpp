@@ -36,14 +36,18 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
 
     // Populate the dataset matrix with the data from the points
     printf("Populating dataset matrix...\n");
+    omp_set_num_threads(4); // Set number of threads before the parallel block
+    omp_set_nested(0);
+    #pragma omp parallel 
+    {
     int chunk_size = this->data_size / omp_get_num_threads(); // Calculate chunk size for parallel processing
-    #pragma omp parallel for schedule(static, chunk_size)
+    #pragma omp for schedule(static, chunk_size)
     for (size_t i = 0; i < this->data_size; i++) {
         for (int j = 0; j < this->dim; j++) {
             this->dataset[i][j] = (*this->data)[i][j];
         }
     }
-
+    }
     // Build the FLANN k-d tree index
     printf("Building FLANN index...\n");
     this->index = new flann::KDTreeSingleIndex<flann::L2_Simple<float>>(this->dataset, flann::KDTreeSingleIndexParams(16));
@@ -124,9 +128,14 @@ void DBSCAN::run() {
     #pragma omp parallel 
     {
         // Initialize OpenMP parameters
-        size_t nThreads = omp_get_max_threads() / 2; // Number of threads available
-        printf("Number of threads: %ld\n", nThreads);
+        size_t nThreads = omp_get_num_threads(); // Number of threads available
+        // printf("Number of threads: %ld\n", nThreads);
         size_t chunk_size = (nPoints / nThreads) + 1; // Calculate chunk size for parallel processing
+	#pragma omp single 
+        {
+            printf("DBSCAN threads: %ld\n", nThreads);
+        }
+
         #pragma omp parallel for schedule(static, chunk_size) shared(next_cluster_id)
         for (size_t i = 0; i < nPoints; i++) {
             if ((*this->labels)[i].load() != 0) continue;
