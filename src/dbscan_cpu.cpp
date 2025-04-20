@@ -90,7 +90,7 @@ vector<size_t> DBSCAN::regionQuery(size_t point, const vector<DataPoint>& points
     flann::Matrix<float> dists(new float[max_nn], 1, max_nn); // Allocate memory for distances
 
     // Perform the radius search using FLANN
-    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(32));
+    int num_found = this->index->radiusSearch(query, indices, dists, (this->eps * this->eps), flann::SearchParams(64, 0.f, false));
     if (num_found == -1) {
         printf("Error: No neighbors found.\n");
         return neighbors; // Return empty vector if no neighbors found
