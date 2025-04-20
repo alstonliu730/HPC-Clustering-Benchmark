@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     auto start = chrono::high_resolution_clock::now();
 
     // Trying high eps distance
-    DBSCAN dbscan(points, 10, 1.0f); // Example parameters: minPts = 5, eps = 1
+    DBSCAN dbscan(points, 20, 1.5f); // Example parameters: minPts = 5, eps = 1
     dbscan.run(); // Run the DBSCAN algorithm
     
     // Benchmarking the DBSCAN algorithm
