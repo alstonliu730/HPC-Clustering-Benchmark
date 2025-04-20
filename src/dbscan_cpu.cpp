@@ -30,7 +30,8 @@ DBSCAN::DBSCAN(const vector<DataPoint>& points, int minPts, double eps) {
     this->data = vector<DataPoint>(points.begin(), points.end()); // Copy the data points
     this->labels = vector<std::atomic<size_t>>(this->data_size); // Allocate memory for labels
     // this->labels->assign(this->data_size, 0); // Initialize labels to 0
-
+    this->visited = vector<bool>(this->data_size, false); // Initialize visited array to false
+    
     // Allocate the dataset matrix for FLANN
     this->dataset = flann::Matrix<float>(new float[this->data_size * this->dim], this->data_size, this->dim);
 
@@ -69,6 +70,9 @@ DBSCAN::~DBSCAN() {
 
     printf("Deleting dataset...\n");
     delete[] this->dataset.ptr(); // Free the dataset matrix memory
+
+    printf("Clearing visited...\n");
+    this->visited.clear();
 }
 
 /**
@@ -140,18 +144,19 @@ void DBSCAN::run() {
         
         #pragma omp parallel for schedule(static, chunk_size)
         for (size_t i = 0; i < nPoints; i++) {
-            if (this->labels[i].load() != 0) continue;
-    
+            if (this->visited[i]) continue;
+            this->visited[i] = true; // Mark the point as visited
+
             vector<size_t> neighbors = regionQuery(i, data);
             if (neighbors.size() < minPts) {
-                this->labels[i].store(NOISE, memory_order_relaxed);
+                this->labels[i].store(NOISE, memory_order_release);
                 continue;
             }
-    
+            
             size_t local_cluster_id;
             local_cluster_id = next_cluster_id.fetch_add(1, memory_order_relaxed); // Increment the cluster ID atomically
     
-            this->labels[i].store(local_cluster_id, memory_order_relaxed); // Assign the cluster ID to the current point
+            this->labels[i].store(local_cluster_id, memory_order_release); // Assign the cluster ID to the current point
     
             vector<size_t> stack(neighbors.begin(), neighbors.end());
             while (!stack.empty()) {
@@ -159,14 +164,15 @@ void DBSCAN::run() {
                 stack.pop_back();
     
                 if (neighbor == i) continue;
-    
-                size_t prev = this->labels[neighbor].load(memory_order_relaxed);
+                if (this->visited[neighbor]) continue;
+
+                this->visited[neighbor] = true; // Mark the point as visited
+
+                size_t prev = this->labels[neighbor].load(memory_order_acquire);
                 if (prev == NOISE) {
-                    this->labels[neighbor].store(local_cluster_id, memory_order_relaxed);
+                    this->labels[neighbor].store(local_cluster_id, memory_order_release);
                     continue;
                 }
-    
-                if (prev != 0) continue;
     
                 bool updated = this->labels[neighbor].compare_exchange_strong(prev, local_cluster_id, memory_order_relaxed);
                 if (updated) {

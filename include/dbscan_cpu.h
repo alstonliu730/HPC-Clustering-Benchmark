@@ -16,6 +16,7 @@ class DBSCAN {
 
         size_t cluster_id; // Current cluster ID
         std::vector<std::atomic<size_t>> labels; // Array to store cluster labels for each point
+        std::vector<bool> visited; // Array to store visited status for each point
         int dim; // Dimension of the data points
         
         std::vector<DataPoint> data; // pointer to the data points
